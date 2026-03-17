@@ -77,6 +77,50 @@ Important variables:
 - Cache: Redis Cloud
 - Storage: S3-compatible bucket
 
+## Publish this website
+
+This repo is prepared for:
+
+- Vercel for the frontend from `frontend`
+- Render for the backend and AI service using `render.yaml`
+- Supabase for PostgreSQL
+
+### 1. Create the database
+
+Create a Supabase project and run the SQL in `infra/db/init.sql`.
+
+Then set:
+
+- `DATABASE_URL` in Render for the backend
+
+### 2. Deploy backend and AI on Render
+
+1. Push this repo to GitHub.
+2. In Render, create a new Blueprint.
+3. Select this repository so Render reads `render.yaml`.
+4. Fill in missing environment values:
+   - `DATABASE_URL`
+   - `FRONTEND_URL`
+   - `AI_SERVICE_URL`
+   - `REDIS_URL` if used
+   - `TWELVE_DATA_API_KEY` optional
+
+### 3. Deploy frontend on Vercel
+
+1. Import this repo in Vercel.
+2. Set root directory to `frontend`.
+3. Add:
+   - `NEXT_PUBLIC_API_URL`
+   - `NEXT_PUBLIC_WS_URL`
+4. Deploy.
+
+### 4. Production env examples
+
+- `NEXT_PUBLIC_API_URL=https://your-backend.onrender.com`
+- `NEXT_PUBLIC_WS_URL=wss://your-backend.onrender.com/ws`
+- `FRONTEND_URL=https://your-frontend.vercel.app`
+- `AI_SERVICE_URL=https://your-ai-service.onrender.com`
+
 ## Live market data
 
 - Crypto quotes use Binance public market data and refresh every 15 seconds in the UI.
