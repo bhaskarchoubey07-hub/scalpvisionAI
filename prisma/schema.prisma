@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -10,4 +5,67 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  password_hash  String
+  full_name      String
+  avatar_url     String?
+  email_verified Boolean  @default(false)
+  created_at     DateTime @default(now())
+
+  watchlists          Watchlist[]
+  predictions         Prediction[]
+  leaderboard_entries LeaderboardEntry[]
+}
+
+model Signal {
+  id          String    @id @default(uuid())
+  market      String
+  direction   String
+  entry_price Decimal?
+  stop_loss   Decimal?
+  take_profit Decimal?
+  risk_reward Decimal?
+  confidence  Int?
+  summary     String?
+  created_at  DateTime  @default(now())
+
+  predictions Prediction[]
+}
+
+model Watchlist {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id    String
+  symbol     String
+  market     String
+  notes      String?
+  created_at DateTime @default(now())
+
+  @@unique([user_id, symbol, market])
+}
+
+model Prediction {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id    String
+  signal     Signal?  @relation(fields: [signal_id], references: [id], onDelete: SetNull)
+  signal_id  String?
+  outcome    String?
+  pnl        Decimal?
+  created_at DateTime @default(now())
+}
+
+model LeaderboardEntry {
+  id           String    @id @default(uuid())
+  user         User?     @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  user_id      String?
+  score        Decimal?
+  win_rate     Decimal?
+  total_trades Int?
+  updated_at   DateTime  @default(now())
 }
