@@ -12,7 +12,10 @@ import { broadcastSignal } from "./services/liveSignals.js";
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: config.frontendUrl, credentials: true }));
+const allowedOrigins = config.allowedOrigins.length
+  ? config.allowedOrigins
+  : [config.frontendUrl, "http://localhost:3000", "https://scalpvision-ai.vercel.app"];
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 app.use(
   rateLimit({

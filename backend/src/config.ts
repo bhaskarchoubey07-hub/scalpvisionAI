@@ -10,5 +10,6 @@ export const config = {
   redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
   aiServiceUrl: process.env.AI_SERVICE_URL ?? "http://localhost:8000",
   cloudStorageBucket: process.env.CLOUD_STORAGE_BUCKET ?? "scalpvision-screenshots",
-  twelveDataApiKey: process.env.TWELVE_DATA_API_KEY ?? ""
+  twelveDataApiKey: process.env.TWELVE_DATA_API_KEY ?? "",
+  allowedOrigins: (process.env.ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean)
 };

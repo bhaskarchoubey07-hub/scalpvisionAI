@@ -67,6 +67,7 @@ Important variables:
 - `JWT_SECRET`: auth token signing secret
 - `TWELVE_DATA_API_KEY`: optional stock data provider key
 - `REDIS_URL`: optional cache connection
+- `ALLOWED_ORIGINS`: comma-separated list for backend CORS (e.g. `https://scalpvision-ai.vercel.app,http://localhost:3000`)
 
 ## Deployment targets
 
