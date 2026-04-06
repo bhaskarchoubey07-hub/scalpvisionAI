@@ -36,6 +36,7 @@ const defaultSymbols = {
 
 async function getCachedQuote(key: string) {
   try {
+    if (!redis) return null;
     const cached = await redis.get(key);
     return cached ? (JSON.parse(cached) as MarketQuote) : null;
   } catch {
@@ -45,6 +46,7 @@ async function getCachedQuote(key: string) {
 
 async function setCachedQuote(key: string, value: MarketQuote) {
   try {
+    if (!redis) return;
     await redis.set(key, JSON.stringify(value), "EX", 15);
   } catch {
     // Cache is optional for local development.

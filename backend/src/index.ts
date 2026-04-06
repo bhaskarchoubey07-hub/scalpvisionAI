@@ -35,7 +35,9 @@ wss.on("connection", (socket) => {
 
 async function bootstrap() {
   try {
-    await redis.connect();
+    if (redis) {
+      await redis.connect();
+    }
   } catch {
     // Redis is optional during early local setup.
   }

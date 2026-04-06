@@ -1,11 +1,12 @@
 import { Redis } from "ioredis";
 import { config } from "./config.js";
 
-export const redis = new Redis(config.redisUrl, {
-  lazyConnect: true,
-  maxRetriesPerRequest: 1
-});
+export const redis = config.redisUrl
+  ? new Redis(config.redisUrl, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 1
+    })
+  : null;
 
-redis.on("error", () => {
-  // Redis is optional in local development; suppress noisy connection spam.
-});
+// Redis is optional; silence background connection noise.
+redis?.on("error", () => {});
