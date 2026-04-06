@@ -5,7 +5,7 @@ import { uploadChartBuffer } from "./services/storage.js";
 import { analyzeChart } from "./services/ai.js";
 import { pool } from "./db.js";
 import { requireAuth } from "./middleware/auth.js";
-import { fetchMarketOverview, fetchMarketQuote } from "./services/marketData.js";
+import { fetchMarketOverview, fetchMarketQuote, fetchYahooCandles } from "./services/marketData.js";
 import { createAuthToken, createUser, verifyUser } from "./services/auth.js";
 
 const upload = multer({
@@ -84,6 +84,17 @@ export function createRouter() {
     const params = schema.parse(request.params);
     const quote = await fetchMarketQuote(params.market, params.symbol);
     return response.json(quote);
+  }));
+
+  router.get("/market/candles", asyncHandler(async (request, response) => {
+    const schema = z.object({
+      symbol: z.string().min(1),
+      range: z.string().optional(),
+      interval: z.string().optional()
+    });
+    const query = schema.parse(request.query);
+    const candles = await fetchYahooCandles(query.symbol, query.range ?? "1mo", query.interval ?? "1d");
+    return response.json({ symbol: query.symbol, candles });
   }));
 
   router.post("/upload-chart", upload.single("chart"), asyncHandler(async (request, response) => {

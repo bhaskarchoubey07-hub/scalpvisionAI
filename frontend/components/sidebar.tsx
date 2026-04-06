@@ -10,6 +10,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/upload", label: "Upload", icon: Upload },
   { href: "/watchlist", label: "Watchlist", icon: BarChart3 },
+  { href: "/india", label: "India Market", icon: CandlestickChart },
   { href: "/analysis", label: "AI Analysis", icon: BrainCircuit },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/community", label: "Community", icon: Users },

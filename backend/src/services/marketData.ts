@@ -38,6 +38,14 @@ async function setCachedQuote(key: string, value: MarketQuote) {
   }
 }
 
+type Candle = {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
 function normalizeYahooSymbol(symbol: string) {
   return symbol.toUpperCase().trim();
 }
@@ -205,4 +213,40 @@ export async function fetchMarketOverview() {
     indianStockProvider: "Yahoo Finance fallback",
     forexProvider: "Yahoo Finance fallback"
   };
+}
+
+export async function fetchYahooCandles(symbol: string, range = "1mo", interval = "1d"): Promise<Candle[]> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${encodeURIComponent(
+    range
+  )}&interval=${encodeURIComponent(interval)}&includePrePost=false`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Yahoo Finance candles failed: ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    chart?: {
+      result?: Array<{
+        timestamp?: number[];
+        indicators?: { quote?: Array<{ open?: number[]; high?: number[]; low?: number[]; close?: number[] }> };
+      }>;
+    };
+  };
+
+  const result = payload.chart?.result?.[0];
+  const times = result?.timestamp ?? [];
+  const quote = result?.indicators?.quote?.[0];
+  if (!quote || !quote.open || !quote.high || !quote.low || !quote.close) {
+    throw new Error("No candle data available");
+  }
+
+  const candles: Candle[] = times.map((t, idx) => ({
+    time: t,
+    open: quote.open?.[idx] ?? 0,
+    high: quote.high?.[idx] ?? 0,
+    low: quote.low?.[idx] ?? 0,
+    close: quote.close?.[idx] ?? 0
+  }));
+
+  return candles.filter((c) => [c.open, c.high, c.low, c.close].every((n) => Number.isFinite(n)));
 }

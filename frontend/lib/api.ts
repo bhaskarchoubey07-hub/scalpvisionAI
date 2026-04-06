@@ -30,6 +30,14 @@ export type WatchlistItem = {
   created_at: string;
 };
 
+export type Candle = {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
 export async function fetchMarketOverview(): Promise<MarketOverview> {
   const response = await fetch(`${apiBaseUrl}/market/overview`, {
     cache: "no-store"
@@ -86,4 +94,18 @@ export async function removeWatchlistItem(token: string, id: string) {
   if (!response.ok) {
     throw new Error("Unable to remove watchlist item");
   }
+}
+
+export async function fetchCandles(symbol: string, range = "3mo", interval = "1d"): Promise<Candle[]> {
+  const url = new URL(`${apiBaseUrl}/market/candles`);
+  url.searchParams.set("symbol", symbol);
+  url.searchParams.set("range", range);
+  url.searchParams.set("interval", interval);
+
+  const response = await fetch(url.toString(), { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error("Unable to load candle data");
+  }
+  const payload = await response.json();
+  return payload.candles as Candle[];
 }
