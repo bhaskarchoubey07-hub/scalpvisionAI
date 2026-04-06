@@ -33,6 +33,21 @@ export default function SignalResultsPage() {
             <div className="rounded-2xl border border-white/10 p-4">Take Profit: {latestSignal.takeProfit}</div>
             <div className="rounded-2xl border border-white/10 p-4">Risk/Reward: {latestSignal.riskReward}</div>
           </div>
+          <div className="mt-6 rounded-2xl border border-white/10 p-4">
+            <div className="text-sm font-semibold text-white">Entry & Exit Plan</div>
+            <p className="mt-2 text-sm text-slate-300">{latestSignal.entryReason}</p>
+            <div className="mt-3 space-y-2">
+              {latestSignal.exitPlan?.map((p) => (
+                <div key={p.label} className="rounded-xl bg-white/5 p-3 text-sm text-slate-200">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{p.label}</span>
+                    <span className="text-accent">{p.price}</span>
+                  </div>
+                  <div className="mt-1 text-xs text-slate-400">{p.reason}</div>
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="mt-6">
             <div className="text-sm text-slate-400">Model reasoning</div>
             <div className="mt-3 space-y-3">

@@ -8,6 +8,11 @@ export const latestSignal = {
   takeProfit: "64980.00",
   confidence: 87,
   riskReward: "2.03",
+  entryReason: "Reclaim of intraday support after bull-flag consolidation and positive momentum cross.",
+  exitPlan: [
+    { label: "Take Profit", price: "64980.00", reason: "Measured move from flagpole and prior H4 supply tap." },
+    { label: "Stop Loss", price: "63890.00", reason: "Below reclaimed support and VWAP cluster; invalidates flag." }
+  ],
   notes: [
     "Bull flag continuation aligned with intraday support.",
     "RSI regained 50 and MACD histogram flipped positive.",
