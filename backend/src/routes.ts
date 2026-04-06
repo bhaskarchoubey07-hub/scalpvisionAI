@@ -49,6 +49,76 @@ export function createRouter() {
     response.json({ ok: true, service: "backend" });
   });
 
+  // ---- Indian Stock Directory ----
+  router.get("/indian-stocks", asyncHandler(async (request, response) => {
+    const schema = z.object({
+      exchange: z.enum(["NSE", "BSE", "NSE,BSE"]).optional(),
+      sector:   z.string().optional(),
+      limit:    z.coerce.number().min(1).max(500).default(100),
+      offset:   z.coerce.number().min(0).default(0)
+    });
+    const query = schema.parse(request.query);
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (query.exchange) {
+      params.push(query.exchange);
+      conditions.push(`exchange = $${params.length}`);
+    }
+    if (query.sector) {
+      params.push(query.sector);
+      conditions.push(`sector = $${params.length}`);
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    params.push(query.limit, query.offset);
+    const { rows } = await pool.query(
+      `SELECT id, symbol, yahoo_symbol, company_name, exchange, sector, industry
+       FROM indian_stocks ${where}
+       ORDER BY company_name ASC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+
+    // Also get distinct sectors for filter UI
+    const { rows: sectors } = await pool.query(
+      "SELECT DISTINCT sector FROM indian_stocks WHERE sector IS NOT NULL ORDER BY sector"
+    );
+
+    return response.json({ stocks: rows, sectors: sectors.map((s) => s.sector) });
+  }));
+
+  router.get("/indian-stocks/search", asyncHandler(async (request, response) => {
+    const schema = z.object({ q: z.string().min(1) });
+    const { q } = schema.parse(request.query);
+    const { rows } = await pool.query(
+      `SELECT id, symbol, yahoo_symbol, company_name, exchange, sector, industry
+       FROM indian_stocks
+       WHERE symbol ILIKE $1
+          OR company_name ILIKE $1
+          OR yahoo_symbol ILIKE $1
+       ORDER BY
+         CASE WHEN symbol ILIKE $2 THEN 0
+              WHEN company_name ILIKE $2 THEN 1
+              ELSE 2 END,
+         company_name ASC
+       LIMIT 20`,
+      [`%${q}%`, `${q}%`]
+    );
+    return response.json({ results: rows });
+  }));
+
+  router.get("/indian-stocks/sectors", asyncHandler(async (_request, response) => {
+    const { rows } = await pool.query(
+      `SELECT sector, COUNT(*) AS count
+       FROM indian_stocks
+       WHERE sector IS NOT NULL
+       GROUP BY sector
+       ORDER BY sector`
+    );
+    return response.json({ sectors: rows });
+  }));
+
   router.post("/auth/signup", asyncHandler(async (request, response) => {
     const payload = authSchema.extend({ fullName: z.string().min(2) }).parse(request.body);
     const user = await createUser(payload.email.toLowerCase(), payload.password, payload.fullName);
