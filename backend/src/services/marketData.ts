@@ -17,7 +17,20 @@ export type MarketQuote = {
 const defaultSymbols = {
   stock: ["AAPL", "NVDA", "TSLA", "MSFT"],
   crypto: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"],
-  "indian-stock": ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS"],
+  "indian-stock": [
+    "RELIANCE.NS",
+    "TCS.NS",
+    "INFY.NS",
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "SBIN.NS",
+    "KOTAKBANK.NS",
+    "BHARTIARTL.NS",
+    "LT.NS",
+    "ITC.NS",
+    "ASIANPAINT.NS",
+    "MARUTI.NS"
+  ],
   forex: ["EURUSD=X", "GBPUSD=X", "USDINR=X", "USDJPY=X"]
 } satisfies Record<MarketType, string[]>;
 
