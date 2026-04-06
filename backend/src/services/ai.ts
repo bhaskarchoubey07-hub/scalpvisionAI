@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { config } from "../config.js";
 
 type AnalysisRequest = {
@@ -29,20 +29,13 @@ function safeNum(val: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-async function fetchImageAsBase64(url: string): Promise<{ base64: string; mimeType: string }> {
-  // Handle data: URIs directly — no network fetch needed
+function imageToInlineData(url: string): { data: string; mimeType: string } {
   if (url.startsWith("data:")) {
-    const [header, base64] = url.split(",");
+    const [header, data] = url.split(",");
     const mimeType = header.replace("data:", "").replace(";base64", "");
-    return { base64, mimeType };
+    return { data, mimeType };
   }
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
-  const contentType = response.headers.get("content-type") ?? "image/jpeg";
-  const mimeType = contentType.split(";")[0].trim();
-  const arrayBuffer = await response.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString("base64");
-  return { base64, mimeType };
+  throw new Error("Only data: URIs are supported for inline image data.");
 }
 
 export async function analyzeChart(request: AnalysisRequest): Promise<AnalysisResult> {
@@ -50,16 +43,15 @@ export async function analyzeChart(request: AnalysisRequest): Promise<AnalysisRe
     throw new Error("GEMINI_API_KEY is not configured on the server.");
   }
 
-  const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
 
-  const { base64, mimeType } = await fetchImageAsBase64(request.imageUrl);
+  const { data, mimeType } = imageToInlineData(request.imageUrl);
 
   const prompt = `You are an expert trading analyst specializing in scalping and intraday chart analysis.
 
 Analyze this ${request.market ?? "stock"} chart${request.symbol ? ` for ${request.symbol}` : ""}${request.timeframe ? ` on the ${request.timeframe} timeframe` : ""}.
 
-Provide a complete JSON analysis with ONLY the following fields (no markdown, no explanation, pure JSON only):
+Return ONLY a valid JSON object with no markdown, no explanation, no code fences. Pure JSON only:
 
 {
   "direction": "long" or "short",
@@ -68,10 +60,10 @@ Provide a complete JSON analysis with ONLY the following fields (no markdown, no
   "entry_price": <number or null>,
   "stop_loss": <number or null>,
   "take_profit": <number or null>,
-  "risk_reward": <number ratio e.g. 2.1 or null>,
+  "risk_reward": <number e.g. 2.1 or null>,
   "confidence": <integer 0-100>,
   "pattern": "detected chart pattern e.g. Bull Flag, Head & Shoulders, Double Bottom",
-  "rsi": <detected RSI value as number or null>,
+  "rsi": <RSI value as number or null>,
   "macd": "Bullish", "Bearish", or "Neutral",
   "summary": "2-3 sentence technical reasoning explaining the setup, key levels, and rationale"
 }
@@ -79,22 +71,22 @@ Provide a complete JSON analysis with ONLY the following fields (no markdown, no
 Rules:
 - entry_price, stop_loss, take_profit must be actual price levels visible on the chart
 - If you cannot determine a value, use null
-- confidence should reflect how clear and strong the setup is (50-95 realistic range)
-- summary must specifically mention the pattern, key levels, and why entry is valid`;
+- confidence should reflect how clear the setup is (realistic range 50-95)
+- summary must mention the pattern, key levels, and why this entry is valid`;
 
-  const result = await model.generateContent([
-    {
-      inlineData: {
-        data: base64,
-        mimeType: mimeType as "image/jpeg" | "image/png" | "image/webp"
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: [
+      {
+        parts: [
+          { inlineData: { data, mimeType } },
+          { text: prompt }
+        ]
       }
-    },
-    prompt
-  ]);
+    ]
+  });
 
-  const text = result.response.text().trim();
-
-  // Strip markdown code fences if model wraps in ```json ... ```
+  const text = (response.text ?? "").trim();
   const jsonText = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
 
   let parsed: Record<string, unknown>;
