@@ -167,17 +167,26 @@ export function createRouter() {
     return response.json({ symbol: query.symbol, candles });
   }));
 
+  // Upload chart — returns a data URL (base64) so Gemini can read the image directly
   router.post("/upload-chart", upload.single("chart"), asyncHandler(async (request, response) => {
     if (!request.file) {
       return response.status(400).json({ error: "Chart image is required" });
     }
-
-    const imageUrl = await uploadChartBuffer(request.file.originalname);
+    const mimeType = request.file.mimetype;
+    const base64 = request.file.buffer.toString("base64");
+    const imageUrl = `data:${mimeType};base64,${base64}`;
     return response.json({ success: true, imageUrl, fileName: request.file.originalname });
   }));
 
+  // Analyze chart — accepts imageUrl (may be a data: URI or https:// URL)
   router.post("/analyze-chart", asyncHandler(async (request, response) => {
-    const payload = analyzeSchema.parse(request.body);
+    const schema = z.object({
+      imageUrl: z.string().min(1),
+      market: z.enum(["stock", "crypto", "indian-stock", "forex"]).default("stock"),
+      symbol: z.string().optional(),
+      timeframe: z.string().optional()
+    });
+    const payload = schema.parse(request.body);
     const result = await analyzeChart(payload);
     return response.json(result);
   }));
