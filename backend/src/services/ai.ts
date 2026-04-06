@@ -51,7 +51,7 @@ export async function analyzeChart(request: AnalysisRequest): Promise<AnalysisRe
   }
 
   const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const { base64, mimeType } = await fetchImageAsBase64(request.imageUrl);
 
