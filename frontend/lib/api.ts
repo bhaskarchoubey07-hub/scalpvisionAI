@@ -109,3 +109,51 @@ export async function fetchCandles(symbol: string, range = "3mo", interval = "1d
   const payload = await response.json();
   return payload.candles as Candle[];
 }
+
+export type AnalysisResult = {
+  direction: string;
+  market: string;
+  symbol?: string;
+  entry_price?: number | null;
+  stop_loss?: number | null;
+  take_profit?: number | null;
+  risk_reward?: number | null;
+  confidence?: number | null;
+  summary?: string | null;
+  pattern?: string | null;
+  rsi?: number | null;
+  macd?: string | null;
+  timeframe?: string | null;
+};
+
+export async function uploadChart(file: File): Promise<{ imageUrl: string }> {
+  const form = new FormData();
+  form.append("chart", file);
+  const response = await fetch(`${apiBaseUrl}/upload-chart`, {
+    method: "POST",
+    body: form
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error((payload as { error?: string }).error ?? "Upload failed");
+  }
+  return response.json();
+}
+
+export async function analyzeChart(
+  imageUrl: string,
+  market: "stock" | "crypto" | "indian-stock" | "forex" = "stock",
+  symbol?: string,
+  timeframe?: string
+): Promise<AnalysisResult> {
+  const response = await fetch(`${apiBaseUrl}/analyze-chart`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageUrl, market, symbol, timeframe })
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error((payload as { error?: string }).error ?? "Analysis failed");
+  }
+  return response.json();
+}
