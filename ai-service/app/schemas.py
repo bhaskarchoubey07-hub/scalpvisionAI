@@ -1,7 +1,5 @@
 from typing import List, Literal, Optional
-
 from pydantic import BaseModel
-
 
 class AnalyzeRequest(BaseModel):
     image_url: Optional[str] = None
@@ -12,12 +10,10 @@ class AnalyzeRequest(BaseModel):
     rsi: Optional[float] = None
     macd_bias: Optional[str] = None
 
-
 class IndicatorReading(BaseModel):
     name: str
     value: str
     bias: Literal["bullish", "bearish", "neutral"]
-
 
 class AnalyzeResponse(BaseModel):
     symbol: str
@@ -42,6 +38,24 @@ class AdvisorRequest(BaseModel):
 class AdvisorResponse(BaseModel):
     answer: str
     confidence: float = 0.95
-    resistance_levels: List[float]
-    indicators: List[IndicatorReading]
-    summary: str
+
+class ForecastPoint(BaseModel):
+    date: str
+    price: float
+    is_forecast: bool = False
+
+class ForecastRequest(BaseModel):
+    symbol: str
+    historical_data: List[dict] # [{date: '...', price: ...}]
+    forecast_years: int = 5
+
+class ForecastPointSimple(BaseModel):
+    date: str
+    price: float
+    is_forecast: bool
+
+class ForecastResponse(BaseModel):
+    points: List[ForecastPointSimple]
+    narrative: str
+    confidence_score: float
+    trend: Literal["bullish", "bearish", "neutral"]

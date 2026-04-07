@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 
-from .schemas import AnalyzeRequest, AnalyzeResponse, AdvisorRequest, AdvisorResponse
+from .schemas import AnalyzeRequest, AnalyzeResponse, AdvisorRequest, AdvisorResponse, ForecastRequest, ForecastResponse
 from .services.pipeline import run_analysis_pipeline
 from .services.ai_explainer import ai_explainer
+from .services.forecast_engine import forecast_engine
 
 app = FastAPI(title="ScalpVision AI Engine", version="0.1.0")
 
@@ -25,3 +26,8 @@ def get_advice(payload: AdvisorRequest):
         context=payload.context
     )
     return AdvisorResponse(answer=answer)
+
+
+@app.post("/forecast", response_model=ForecastResponse)
+def get_5y_forecast(payload: ForecastRequest):
+    return forecast_engine.generate_5y_forecast(payload)

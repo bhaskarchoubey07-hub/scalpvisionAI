@@ -157,3 +157,104 @@ export async function analyzeChart(
   }
   return response.json();
 }
+
+export type IndianStock = {
+  symbol: string;
+  yahoo_symbol: string;
+  company_name: string;
+  sector: string;
+  industry: string;
+  exchange: string;
+};
+
+export async function fetchIndianStocksSearch(query: string): Promise<IndianStock[]> {
+  const response = await fetch(`${apiBaseUrl}/market/indian-stocks/search?q=${encodeURIComponent(query)}`);
+  if (!response.ok) throw new Error("Search failed");
+  return response.json();
+}
+
+export async function fetchPopularIndianStocks(): Promise<IndianStock[]> {
+  const response = await fetch(`${apiBaseUrl}/market/indian-stocks/popular`);
+  if (!response.ok) throw new Error("Failed to load popular stocks");
+  return response.json();
+}
+
+export type ForecastPoint = {
+  date: string;
+  price: number;
+  is_forecast: boolean;
+};
+
+export type ForecastResult = {
+  points: ForecastPoint[];
+  narrative: string;
+  confidence_score: number;
+  trend: "bullish" | "bearish" | "neutral";
+};
+
+export async function fetchForecast(symbol: string, market: string): Promise<ForecastResult> {
+  const response = await fetch(`${apiBaseUrl}/market/forecast`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ symbol, market })
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error ?? "Forecasting failed");
+  }
+  return response.json();
+}
+
+export type PortfolioHolding = {
+  id: string;
+  symbol: string;
+  market: string;
+  quantity: number;
+  avg_buy_price: number;
+  added_at: string;
+};
+
+export type Portfolio = {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  holdings: PortfolioHolding[];
+};
+
+export async function fetchPortfolios(token: string): Promise<Portfolio[]> {
+  const response = await fetch(`${apiBaseUrl}/portfolios`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error("Failed to load portfolios");
+  return response.json();
+}
+
+export async function createPortfolio(token: string, name: string, description?: string) {
+  const response = await fetch(`${apiBaseUrl}/portfolios`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ name, description })
+  });
+  return response.json();
+}
+
+export async function addPortfolioHolding(token: string, portfolioId: string, holding: Omit<PortfolioHolding, "id" | "added_at">) {
+  const response = await fetch(`${apiBaseUrl}/portfolios/${portfolioId}/holdings`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      symbol: holding.symbol,
+      market: holding.market,
+      quantity: holding.quantity,
+      avgBuyPrice: holding.avg_buy_price
+    })
+  });
+  return response.json();
+}

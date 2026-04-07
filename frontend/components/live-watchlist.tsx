@@ -3,6 +3,7 @@
 import { useMarketOverview } from "@/hooks/use-market-overview";
 import { useWatchlist } from "@/hooks/use-watchlist";
 import Link from "next/link";
+import clsx from "clsx";
 
 const labels: Record<string, string> = {
   BTCUSDT: "Breakout watch",
@@ -50,25 +51,35 @@ export function LiveWatchlist() {
         </div>
       ) : null}
       {error ? <div className="mb-4 rounded-2xl bg-red-500/10 p-4 text-sm text-red-200">{error}</div> : null}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
       {quotes.map((item) => (
-        <div key={item.symbol} className="glass rounded-[2rem] p-6">
+        <div key={item.symbol} className="glass rounded-[2rem] p-6 hover:border-accent/20 transition-colors group">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-xl font-semibold">{item.symbol}</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {item.market === "crypto" ? "Crypto" : item.market === "stock" ? "US Stock" : item.market === "indian-stock" ? "Indian Stock" : "Forex"}
+              <h2 className="text-xl font-heading font-black tracking-widest text-white group-hover:text-accent transition-colors">{item.symbol.replace('.NS', '').replace('.BO', '')}</h2>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                {item.market === "crypto" ? "Crypto" : item.market === "stock" ? "US Stock" : item.market === "indian-stock" ? "NSE/BSE" : "Forex"}
               </p>
             </div>
-            <div className={item.changePercent >= 0 ? "text-sm text-accent" : "text-sm text-red-300"}>
+            <div className={clsx(
+              "text-xs font-bold px-2 py-1 rounded-lg",
+              item.changePercent >= 0 ? "bg-accent/10 text-accent" : "bg-red-500/10 text-red-400"
+            )}>
               {item.changePercent >= 0 ? "+" : ""}
               {item.changePercent.toFixed(2)}%
             </div>
           </div>
-          <p className="mt-6 text-sm text-slate-300">{labels[item.symbol] ?? "Scanner update"}</p>
-          <p className="mt-2 text-xs text-slate-500">
-            {item.price.toLocaleString("en-US", { maximumFractionDigits: item.price > 1000 ? 2 : 4 })} {item.currency}
-          </p>
+          <p className="mt-6 text-sm text-slate-300 font-medium">{labels[item.symbol] ?? "Technical setup identified"}</p>
+          <div className="mt-4 flex items-baseline gap-1.5">
+            <span className="text-xs font-bold text-slate-500">
+              {item.market === "indian-stock" ? "₹" : "$"}
+            </span>
+            <span className="text-xl font-heading font-black text-white">
+              {item.price.toLocaleString(item.market === "indian-stock" ? "en-IN" : "en-US", { 
+                maximumFractionDigits: item.price > 100 ? 2 : 4 
+              })}
+            </span>
+          </div>
           <button
             onClick={() => {
               const watchlistItem = items.find((entry) => entry.symbol === item.symbol && entry.market === item.market);
@@ -76,9 +87,9 @@ export function LiveWatchlist() {
                 void remove(watchlistItem.id);
               }
             }}
-            className="mt-4 rounded-full border border-white/10 px-4 py-2 text-xs text-slate-200"
+            className="mt-6 w-full rounded-xl border border-white/10 bg-white/[0.03] py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 transition-all"
           >
-            Remove
+            Remove from list
           </button>
         </div>
       ))}

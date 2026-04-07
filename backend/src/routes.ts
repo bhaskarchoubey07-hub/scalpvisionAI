@@ -322,6 +322,123 @@ export function createRouter() {
     return response.status(500).json({ error: message });
   });
 
+  // --- INDIAN MARKET ---
+  router.get("/market/indian-stocks/search", asyncHandler(async (request, response) => {
+    const q = request.query.q as string;
+    if (!q || q.length < 2) return response.json([]);
+
+    const { rows } = await pool.query(
+      `SELECT symbol, yahoo_symbol, company_name, sector, industry, exchange 
+       FROM indian_stocks 
+       WHERE (symbol ILIKE $1 OR company_name ILIKE $1) 
+       ORDER BY company_name ASC LIMIT 10`,
+      [`%${q}%`]
+    );
+    return response.json(rows);
+  }));
+
+  router.get("/market/indian-stocks/popular", asyncHandler(async (_request, response) => {
+    const { rows } = await pool.query(
+      `SELECT symbol, yahoo_symbol, company_name, sector, industry, exchange 
+       FROM indian_stocks 
+       WHERE yahoo_symbol IN ('RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS', 'SBIN.NS', 'BHARTIARTL.NS', 'ITC.NS', 'LT.NS', 'MARUTI.NS', 'ASIANPAINT.NS', 'WIPRO.NS')
+       ORDER BY company_name ASC`
+    );
+    return response.json(rows);
+  }));
+
+  // --- PORTFOLIOS ---
+  router.get("/portfolios", requireAuth, asyncHandler(async (_request, response) => {
+    const { rows } = await pool.query(
+      "SELECT id, name, description, created_at FROM portfolios WHERE user_id = $1 ORDER BY created_at DESC",
+      [response.locals.user.sub]
+    );
+    
+    // For each portfolio, fetch its holdings
+    const portfolios = await Promise.all(rows.map(async (p) => {
+      const { rows: holdings } = await pool.query(
+        "SELECT id, symbol, market, quantity, avg_buy_price, added_at FROM portfolio_holdings WHERE portfolio_id = $1",
+        [p.id]
+      );
+      return { ...p, holdings };
+    }));
+    
+    return response.json(portfolios);
+  }));
+
+  router.post("/portfolios", requireAuth, asyncHandler(async (request, response) => {
+    const schema = z.object({
+      name: z.string().min(1),
+      description: z.string().optional()
+    });
+    const { name, description } = schema.parse(request.body);
+    const { rows } = await pool.query(
+      "INSERT INTO portfolios (user_id, name, description) VALUES ($1, $2, $3) RETURNING *",
+      [response.locals.user.sub, name, description || null]
+    );
+    return response.status(201).json(rows[0]);
+  }));
+
+  router.post("/portfolios/:id/holdings", requireAuth, asyncHandler(async (request, response) => {
+    const schema = z.object({
+      symbol: z.string().min(1),
+      market: z.enum(["stock", "crypto", "indian-stock", "forex"]),
+      quantity: z.number().positive(),
+      avgBuyPrice: z.number().positive()
+    });
+    const payload = schema.parse(request.body);
+    
+    const { rows } = await pool.query(
+      "INSERT INTO portfolio_holdings (portfolio_id, symbol, market, quantity, avg_buy_price) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [request.params.id, payload.symbol, payload.market, payload.quantity, payload.avgBuyPrice]
+    );
+    return response.status(201).json(rows[0]);
+  }));
+
+  router.delete("/portfolios/holdings/:id", requireAuth, asyncHandler(async (request, response) => {
+    await pool.query(
+      "DELETE FROM portfolio_holdings WHERE id = $1 AND portfolio_id IN (SELECT id FROM portfolios WHERE user_id = $2)",
+      [request.params.id, response.locals.user.sub]
+    );
+    return response.status(204).send();
+  }));
+
+  // --- FORECASTING ---
+  router.post("/market/forecast", asyncHandler(async (request, response) => {
+    const schema = z.object({
+      symbol: z.string().min(1),
+      market: z.enum(["stock", "crypto", "indian-stock", "forex"]).default("indian-stock")
+    });
+    const { symbol, market } = schema.parse(request.body);
+    
+    // 1. Fetch 5 years of historical data from Yahoo
+    const candles = await fetchYahooCandles(symbol, "5y", "1wk"); // Weekly candles for 5y is ~260 points
+    
+    if (candles.length < 50) {
+      return response.status(400).json({ error: "Insufficient historical data for a 5-year forecast." });
+    }
+
+    const historical_data = candles.map(c => ({
+      date: new Date(c.time * 1000).toISOString().split('T')[0],
+      price: c.close
+    }));
+
+    // 2. Proxy to Python AI Engine
+    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
+    const aiResponse = await fetch(`${aiServiceUrl}/forecast`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbol, historical_data, forecast_years: 5 })
+    });
+
+    if (!aiResponse.ok) {
+      throw new Error(`AI Forecast Service failed: ${aiResponse.status}`);
+    }
+
+    const data = await aiResponse.json();
+    return response.json(data);
+  }));
+
   // --- AI ADVISOR ---
   router.post("/ai-advisor", async (req: Request, res: Response) => {
     try {

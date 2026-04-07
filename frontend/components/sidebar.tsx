@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BrainCircuit, CandlestickChart, LayoutDashboard, Shield, Trophy, Upload, User, Users } from "lucide-react";
+import { BarChart3, BrainCircuit, CandlestickChart, LayoutDashboard, Shield, Trophy, Upload, User, Users, Wallet } from "lucide-react";
 import clsx from "clsx";
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { href: "/upload", label: "Upload", icon: Upload },
   { href: "/watchlist", label: "Watchlist", icon: BarChart3 },
   { href: "/india", label: "India Market", icon: CandlestickChart },
+  { href: "/portfolio", label: "Portfolio", icon: Wallet },
   { href: "/analysis", label: "AI Analysis", icon: BrainCircuit },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/community", label: "Community", icon: Users },
