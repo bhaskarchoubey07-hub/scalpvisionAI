@@ -4,8 +4,8 @@ from pydantic import BaseModel, HttpUrl
 
 
 class AnalyzeRequest(BaseModel):
-    image_url: HttpUrl
-    market: Literal["stock", "crypto"]
+    image_url: Optional[HttpUrl] = None
+    market: Literal["stock", "crypto", "indian-stock", "forex"]
     symbol: Optional[str] = None
     timeframe: Optional[str] = "5m"
 

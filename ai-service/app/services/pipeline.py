@@ -1,56 +1,56 @@
+import os
 from ..schemas import AnalyzeRequest, AnalyzeResponse, IndicatorReading
-
-
-def preprocess_image(_image_url: str) -> dict:
-    return {"cleaned": True, "crop_detected": True, "chart_type": "candlestick"}
-
-
-def detect_patterns(_preprocessed: dict) -> list[str]:
-    return ["bull_flag", "ascending_support"]
-
-
-def detect_levels(_preprocessed: dict) -> tuple[list[float], list[float]]:
-    return [64120.0, 63940.0], [64620.0, 64980.0]
-
-
-def extract_indicators(_preprocessed: dict) -> list[IndicatorReading]:
-    return [
-        IndicatorReading(name="RSI", value="54.2", bias="bullish"),
-        IndicatorReading(name="MACD", value="Positive histogram flip", bias="bullish"),
-    ]
-
-
-def generate_signal(request: AnalyzeRequest, support_levels: list[float], resistance_levels: list[float]) -> dict:
-    entry = 64250.0 if request.market == "crypto" else 512.45
-    stop = support_levels[-1] - 50 if request.market == "crypto" else support_levels[-1] - 1.5
-    take_profit = resistance_levels[-1]
-    risk_reward = round((take_profit - entry) / (entry - stop), 2)
-    return {
-      "market": request.market,
-      "symbol": request.symbol or ("BTC/USDT" if request.market == "crypto" else "SPY"),
-      "timeframe": request.timeframe or "5m",
-      "entry_price": entry,
-      "stop_loss": stop,
-      "take_profit": take_profit,
-      "risk_reward": risk_reward,
-      "confidence": 87.0,
-      "direction": "long",
-      "summary": "Momentum continuation detected near reclaimed support with improving oscillator structure.",
-    }
-
+from .image_processor import image_processor
+from .strategy_engine import strategy_engine
+from .ai_explainer import ai_explainer
 
 def run_analysis_pipeline(request: AnalyzeRequest) -> AnalyzeResponse:
-    preprocessed = preprocess_image(str(request.image_url))
-    patterns = detect_patterns(preprocessed)
-    support_levels, resistance_levels = detect_levels(preprocessed)
-    indicators = extract_indicators(preprocessed)
-    signal = generate_signal(request, support_levels, resistance_levels)
+    """The main entry point for AI analysis of charts and tickers."""
+    
+    # 1. Processing (Image or Ticker only)
+    if request.image_url and str(request.image_url).startswith("http"):
+        img = image_processor.load_image(str(request.image_url))
+        cv_data = image_processor.analyze_chart(img)
+    else:
+        # Fallback for ticker-only analysis (No image provided)
+        cv_data = {
+            "trend": "unknown (no image)",
+            "support_levels": [],
+            "resistance_levels": [],
+        }
+
+    # 2. Strategy Engine
+    strategy = strategy_engine.generate_strategy(
+        cv_data, 
+        request.market, 
+        request.symbol, 
+        request.timeframe
+    )
+
+    # 3. AI Explanation (Groq)
+    explanation = ai_explainer.explain_trade(strategy)
+
+    # 4. Map to Output Schema
+    # Mocking indicators for now as requested (could be expanded)
+    indicators = [
+        IndicatorReading(name="RSI", value="Approx 55", bias="neutral"),
+        IndicatorReading(name="Trend", value=strategy["trend"], bias="bullish" if strategy["direction"] == "long" else "bearish"),
+    ]
 
     return AnalyzeResponse(
-        chart_type=preprocessed["chart_type"],
-        patterns=patterns,
-        support_levels=support_levels,
-        resistance_levels=resistance_levels,
+        market=strategy["market"],
+        symbol=strategy["symbol"],
+        timeframe=strategy["timeframe"],
+        chart_type="candlestick",
+        confidence=float(strategy["confidence"]),
+        entry_price=float(strategy["entry_price"]),
+        stop_loss=float(strategy["stop_loss"]),
+        take_profit=float(strategy["take_profit"]),
+        risk_reward=float(strategy["risk_reward"]),
+        direction="long" if strategy["direction"] == "long" else "short",
+        patterns=["Detected via OpenCV"],
+        support_levels=[float(s) for s in strategy["support"]],
+        resistance_levels=[float(r) for r in strategy["resistance"]],
         indicators=indicators,
-        **signal,
+        summary=explanation
     )
