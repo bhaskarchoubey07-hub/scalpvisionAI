@@ -195,7 +195,7 @@ export default function IndiaMarketPage() {
                    ) : forecastData ? (
                       <>
                         <div className="flex-1 min-h-[300px]">
-                           <ForecastChart points={forecastData.points} trend={forecastData.trend} />
+                           <ForecastChart points={forecastData.points} trend={forecastData.trend} candles={candles} />
                         </div>
                         <div className="glass rounded-2xl p-6 border-accent/20 bg-accent/5">
                            <div className="flex items-center gap-2 mb-3">

@@ -1,121 +1,186 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { type ForecastPoint } from "@/lib/api";
-import { motion } from "framer-motion";
-import clsx from "clsx";
+import { useEffect, useRef } from "react";
+import { createChart, ColorType, type Time, type ISeriesApi } from "lightweight-charts";
+import { type ForecastPoint, type Candle } from "@/lib/api";
 
 interface Props {
   points: ForecastPoint[];
   trend: "bullish" | "bearish" | "neutral";
+  candles?: Candle[];
 }
 
-export function ForecastChart({ points, trend }: Props) {
-  const chartHeight = 300;
-  const chartWidth = 800;
-  const padding = 40;
+export function ForecastChart({ points, trend, candles }: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const { minPrice, maxPrice, historicalPoints, forecastPoints } = useMemo(() => {
-    const prices = points.map(p => p.price);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    const range = max - min;
-    
-    // Normalize to chart coordinates
-    const scaleY = (p: number) => chartHeight - padding - ((p - min) / (range || 1)) * (chartHeight - padding * 2);
-    const scaleX = (idx: number) => padding + (idx / (points.length - 1)) * (chartWidth - padding * 2);
+  useEffect(() => {
+    if (!containerRef.current) return;
 
-    const coords = points.map((p, i) => ({
-      x: scaleX(i),
-      y: scaleY(p.price),
-      isForecast: p.is_forecast
-    }));
+    const chart = createChart(containerRef.current, {
+      width: containerRef.current.clientWidth,
+      height: 420,
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: "#64748b",
+        fontSize: 11,
+      },
+      grid: {
+        vertLines: { color: "rgba(255,255,255,0.04)" },
+        horzLines: { color: "rgba(255,255,255,0.04)" },
+      },
+      timeScale: {
+        timeVisible: false,
+        borderColor: "rgba(255,255,255,0.08)",
+        rightOffset: 5,
+      },
+      rightPriceScale: {
+        borderColor: "rgba(255,255,255,0.08)",
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      },
+      crosshair: {
+        vertLine: { color: "rgba(6,182,212,0.3)", width: 1, style: 2 },
+        horzLine: { color: "rgba(6,182,212,0.3)", width: 1, style: 2 },
+      },
+    });
 
-    return {
-      minPrice: min,
-      maxPrice: max,
-      historicalPoints: coords.filter(p => !p.isForecast),
-      forecastPoints: coords.filter(p => p.isForecast)
+    const historicalPts = points.filter((p) => !p.is_forecast);
+    const forecastPts = points.filter((p) => p.is_forecast);
+
+    // ── Candlestick series for historical data ──
+    if (candles && candles.length > 0) {
+      const candleSeries = chart.addCandlestickSeries({
+        upColor: "#3dd9b8",
+        borderUpColor: "#3dd9b8",
+        wickUpColor: "#3dd9b8",
+        downColor: "#ff8c5a",
+        borderDownColor: "#ff8c5a",
+        wickDownColor: "#ff8c5a",
+      });
+      candleSeries.setData(
+        candles.map((c) => ({
+          time: c.time as Time,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+        }))
+      );
+    } else if (historicalPts.length > 0) {
+      // Fallback: simulate candles from forecast point data
+      const candleSeries = chart.addCandlestickSeries({
+        upColor: "#3dd9b8",
+        borderUpColor: "#3dd9b8",
+        wickUpColor: "#3dd9b8",
+        downColor: "#ff8c5a",
+        borderDownColor: "#ff8c5a",
+        wickDownColor: "#ff8c5a",
+      });
+      candleSeries.setData(
+        historicalPts.map((p, i) => {
+          const prev = i > 0 ? historicalPts[i - 1].price : p.price;
+          const variance = p.price * 0.015;
+          const open = prev;
+          const close = p.price;
+          const high = Math.max(open, close) + Math.random() * variance;
+          const low = Math.min(open, close) - Math.random() * variance;
+          return {
+            time: p.date as Time,
+            open,
+            high,
+            low,
+            close,
+          };
+        })
+      );
+    }
+
+    // ── Forecast line series (dashed) ──
+    if (forecastPts.length > 0) {
+      const forecastColor = trend === "bearish" ? "#ff8c5a" : "#3dd9b8";
+
+      const forecastLine = chart.addLineSeries({
+        color: forecastColor,
+        lineWidth: 2,
+        lineStyle: 2,
+        crosshairMarkerVisible: true,
+        crosshairMarkerRadius: 4,
+        priceLineVisible: true,
+        priceLineColor: forecastColor,
+        priceLineStyle: 2,
+        lastValueVisible: true,
+      });
+
+      // Bridge: include last historical point so lines connect
+      const bridge =
+        historicalPts.length > 0
+          ? [{ time: historicalPts[historicalPts.length - 1].date as Time, value: historicalPts[historicalPts.length - 1].price }]
+          : [];
+
+      forecastLine.setData([
+        ...bridge,
+        ...forecastPts.map((p) => ({
+          time: p.date as Time,
+          value: p.price,
+        })),
+      ]);
+    }
+
+    // ── Current price marker ──
+    if (historicalPts.length > 0) {
+      const lastPrice = historicalPts[historicalPts.length - 1].price;
+      const markerLine = chart.addLineSeries({
+        color: "transparent",
+        lineWidth: 0,
+        priceLineVisible: true,
+        priceLineColor: "rgba(6,182,212,0.6)",
+        priceLineStyle: 1,
+        lastValueVisible: true,
+      });
+      markerLine.setData([
+        { time: historicalPts[historicalPts.length - 1].date as Time, value: lastPrice },
+      ]);
+    }
+
+    chart.timeScale().fitContent();
+
+    const handleResize = () => {
+      if (containerRef.current) {
+        chart.applyOptions({ width: containerRef.current.clientWidth });
+      }
     };
-  }, [points]);
 
-  const historicalPath = historicalPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-  
-  // Forecast path starts from the last historical point
-  const lastHistory = historicalPoints[historicalPoints.length - 1];
-  const forecastPath = lastHistory 
-    ? `M ${lastHistory.x} ${lastHistory.y} ` + forecastPoints.map(p => `L ${p.x} ${p.y}`).join(' ')
-    : "";
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      chart.remove();
+    };
+  }, [points, candles, trend]);
 
   return (
-    <div className="relative w-full overflow-hidden bg-black/40 rounded-3xl border border-white/5 p-6">
-      <div className="flex items-center justify-between mb-8">
-         <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-accent" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Historical Basis</span>
-            <div className="h-2 w-2 rounded-full bg-accent/40 ml-4 border border-dashed border-accent" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">5-Year Prediction</span>
-         </div>
-         <div className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-            Min: {minPrice.toFixed(2)} • Max: {maxPrice.toFixed(2)}
-         </div>
-      </div>
-
-      <svg 
-        viewBox={`0 0 ${chartWidth} ${chartHeight}`} 
-        className="w-full h-full overflow-visible"
-        preserveAspectRatio="none"
-      >
-        {/* Grids */}
-        <line x1={padding} y1={padding} x2={padding} y2={chartHeight - padding} stroke="rgba(255,255,255,0.05)" />
-        <line x1={padding} y1={chartHeight - padding} x2={chartWidth - padding} y2={chartHeight - padding} stroke="rgba(255,255,255,0.05)" />
-
-        {/* Forecast Glow Area */}
-        {lastHistory && forecastPoints.length > 0 && (
-          <motion.path
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            d={`${forecastPath} L ${forecastPoints[forecastPoints.length-1].x} ${chartHeight - padding} L ${lastHistory.x} ${chartHeight - padding} Z`}
-            fill={trend === "bullish" ? "url(#glow-bull)" : "url(#glow-bear)"}
-            className="opacity-20"
+    <div className="w-full">
+      <div className="flex items-center gap-4 mb-4 px-2">
+        <div className="flex items-center gap-2">
+          <div className="h-2.5 w-2.5 rounded-sm bg-[#3dd9b8]" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            Historical
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div
+            className="h-0.5 w-5"
+            style={{
+              backgroundImage: `repeating-linear-gradient(90deg, ${trend === "bearish" ? "#ff8c5a" : "#3dd9b8"} 0, ${trend === "bearish" ? "#ff8c5a" : "#3dd9b8"} 4px, transparent 4px, transparent 8px)`,
+            }}
           />
-        )}
-
-        {/* Historical Line */}
-        <motion.path
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1.5, ease: "easeInOut" }}
-          d={historicalPath}
-          fill="none"
-          stroke="var(--color-accent)"
-          strokeWidth="2"
-        />
-
-        {/* Forecast Line */}
-        <motion.path
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 1, delay: 1.5, ease: "linear" }}
-          d={forecastPath}
-          fill="none"
-          stroke="var(--color-accent)"
-          strokeWidth="2"
-          strokeDasharray="4 4"
-        />
-
-        {/* Definitions */}
-        <defs>
-          <linearGradient id="glow-bull" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-accent)" />
-            <stop offset="100%" stopColor="transparent" />
-          </linearGradient>
-          <linearGradient id="glow-bear" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#f87171" />
-            <stop offset="100%" stopColor="transparent" />
-          </linearGradient>
-        </defs>
-      </svg>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            5Y Projection
+          </span>
+        </div>
+      </div>
+      <div
+        ref={containerRef}
+        className="w-full rounded-2xl border border-white/5 bg-black/30"
+      />
     </div>
   );
 }
