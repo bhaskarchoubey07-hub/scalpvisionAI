@@ -12,6 +12,7 @@ const navItems = [
   { href: "/watchlist", label: "Watchlist", icon: BarChart3 },
   { href: "/india", label: "India Market", icon: CandlestickChart },
   { href: "/portfolio", label: "Portfolio", icon: Wallet },
+  { href: "/forecast", label: "FinAI Forecast", icon: BarChart3 },
   { href: "/analysis", label: "AI Analysis", icon: BrainCircuit },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/community", label: "Community", icon: Users },
