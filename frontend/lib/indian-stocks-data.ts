@@ -1,0 +1,140 @@
+// Comprehensive list of NSE/BSE Indian stocks for client-side search
+// This serves as a fallback when the database search is not available
+
+export interface IndianStockEntry {
+  symbol: string;
+  yahoo_symbol: string;
+  company_name: string;
+  sector: string;
+  exchange: string;
+}
+
+export const INDIAN_STOCKS: IndianStockEntry[] = [
+  // NIFTY 50
+  { symbol: "RELIANCE", yahoo_symbol: "RELIANCE.NS", company_name: "Reliance Industries Ltd", sector: "Energy", exchange: "NSE" },
+  { symbol: "TCS", yahoo_symbol: "TCS.NS", company_name: "Tata Consultancy Services", sector: "IT", exchange: "NSE" },
+  { symbol: "HDFCBANK", yahoo_symbol: "HDFCBANK.NS", company_name: "HDFC Bank Ltd", sector: "Banking", exchange: "NSE" },
+  { symbol: "INFY", yahoo_symbol: "INFY.NS", company_name: "Infosys Ltd", sector: "IT", exchange: "NSE" },
+  { symbol: "ICICIBANK", yahoo_symbol: "ICICIBANK.NS", company_name: "ICICI Bank Ltd", sector: "Banking", exchange: "NSE" },
+  { symbol: "HINDUNILVR", yahoo_symbol: "HINDUNILVR.NS", company_name: "Hindustan Unilever Ltd", sector: "FMCG", exchange: "NSE" },
+  { symbol: "SBIN", yahoo_symbol: "SBIN.NS", company_name: "State Bank of India", sector: "Banking", exchange: "NSE" },
+  { symbol: "BHARTIARTL", yahoo_symbol: "BHARTIARTL.NS", company_name: "Bharti Airtel Ltd", sector: "Telecom", exchange: "NSE" },
+  { symbol: "ITC", yahoo_symbol: "ITC.NS", company_name: "ITC Ltd", sector: "FMCG", exchange: "NSE" },
+  { symbol: "KOTAKBANK", yahoo_symbol: "KOTAKBANK.NS", company_name: "Kotak Mahindra Bank", sector: "Banking", exchange: "NSE" },
+  { symbol: "LT", yahoo_symbol: "LT.NS", company_name: "Larsen & Toubro Ltd", sector: "Construction", exchange: "NSE" },
+  { symbol: "HCLTECH", yahoo_symbol: "HCLTECH.NS", company_name: "HCL Technologies Ltd", sector: "IT", exchange: "NSE" },
+  { symbol: "AXISBANK", yahoo_symbol: "AXISBANK.NS", company_name: "Axis Bank Ltd", sector: "Banking", exchange: "NSE" },
+  { symbol: "ASIANPAINT", yahoo_symbol: "ASIANPAINT.NS", company_name: "Asian Paints Ltd", sector: "Consumer Goods", exchange: "NSE" },
+  { symbol: "MARUTI", yahoo_symbol: "MARUTI.NS", company_name: "Maruti Suzuki India", sector: "Automobile", exchange: "NSE" },
+  { symbol: "SUNPHARMA", yahoo_symbol: "SUNPHARMA.NS", company_name: "Sun Pharmaceutical", sector: "Pharma", exchange: "NSE" },
+  { symbol: "TITAN", yahoo_symbol: "TITAN.NS", company_name: "Titan Company Ltd", sector: "Consumer Goods", exchange: "NSE" },
+  { symbol: "BAJFINANCE", yahoo_symbol: "BAJFINANCE.NS", company_name: "Bajaj Finance Ltd", sector: "Finance", exchange: "NSE" },
+  { symbol: "DMART", yahoo_symbol: "DMART.NS", company_name: "Avenue Supermarts (DMart)", sector: "Retail", exchange: "NSE" },
+  { symbol: "WIPRO", yahoo_symbol: "WIPRO.NS", company_name: "Wipro Ltd", sector: "IT", exchange: "NSE" },
+  { symbol: "ULTRACEMCO", yahoo_symbol: "ULTRACEMCO.NS", company_name: "UltraTech Cement", sector: "Cement", exchange: "NSE" },
+  { symbol: "NESTLEIND", yahoo_symbol: "NESTLEIND.NS", company_name: "Nestle India Ltd", sector: "FMCG", exchange: "NSE" },
+  { symbol: "TATAMOTORS", yahoo_symbol: "TATAMOTORS.NS", company_name: "Tata Motors Ltd", sector: "Automobile", exchange: "NSE" },
+  { symbol: "BAJAJFINSV", yahoo_symbol: "BAJAJFINSV.NS", company_name: "Bajaj Finserv Ltd", sector: "Finance", exchange: "NSE" },
+  { symbol: "NTPC", yahoo_symbol: "NTPC.NS", company_name: "NTPC Ltd", sector: "Power", exchange: "NSE" },
+  { symbol: "POWERGRID", yahoo_symbol: "POWERGRID.NS", company_name: "Power Grid Corp", sector: "Power", exchange: "NSE" },
+  { symbol: "TATASTEEL", yahoo_symbol: "TATASTEEL.NS", company_name: "Tata Steel Ltd", sector: "Metals", exchange: "NSE" },
+  { symbol: "ONGC", yahoo_symbol: "ONGC.NS", company_name: "Oil & Natural Gas Corp", sector: "Energy", exchange: "NSE" },
+  { symbol: "JSWSTEEL", yahoo_symbol: "JSWSTEEL.NS", company_name: "JSW Steel Ltd", sector: "Metals", exchange: "NSE" },
+  { symbol: "M&M", yahoo_symbol: "M%26M.NS", company_name: "Mahindra & Mahindra", sector: "Automobile", exchange: "NSE" },
+  { symbol: "ADANIENT", yahoo_symbol: "ADANIENT.NS", company_name: "Adani Enterprises", sector: "Conglomerate", exchange: "NSE" },
+  { symbol: "ADANIPORTS", yahoo_symbol: "ADANIPORTS.NS", company_name: "Adani Ports & SEZ", sector: "Infrastructure", exchange: "NSE" },
+  { symbol: "COALINDIA", yahoo_symbol: "COALINDIA.NS", company_name: "Coal India Ltd", sector: "Mining", exchange: "NSE" },
+  { symbol: "TECHM", yahoo_symbol: "TECHM.NS", company_name: "Tech Mahindra Ltd", sector: "IT", exchange: "NSE" },
+  { symbol: "DRREDDY", yahoo_symbol: "DRREDDY.NS", company_name: "Dr Reddy's Laboratories", sector: "Pharma", exchange: "NSE" },
+  { symbol: "CIPLA", yahoo_symbol: "CIPLA.NS", company_name: "Cipla Ltd", sector: "Pharma", exchange: "NSE" },
+  { symbol: "BRITANNIA", yahoo_symbol: "BRITANNIA.NS", company_name: "Britannia Industries", sector: "FMCG", exchange: "NSE" },
+  { symbol: "DIVISLAB", yahoo_symbol: "DIVISLAB.NS", company_name: "Divi's Laboratories", sector: "Pharma", exchange: "NSE" },
+  { symbol: "EICHERMOT", yahoo_symbol: "EICHERMOT.NS", company_name: "Eicher Motors Ltd", sector: "Automobile", exchange: "NSE" },
+  { symbol: "APOLLOHOSP", yahoo_symbol: "APOLLOHOSP.NS", company_name: "Apollo Hospitals", sector: "Healthcare", exchange: "NSE" },
+  { symbol: "HEROMOTOCO", yahoo_symbol: "HEROMOTOCO.NS", company_name: "Hero MotoCorp", sector: "Automobile", exchange: "NSE" },
+  { symbol: "GRASIM", yahoo_symbol: "GRASIM.NS", company_name: "Grasim Industries", sector: "Cement", exchange: "NSE" },
+  { symbol: "SBILIFE", yahoo_symbol: "SBILIFE.NS", company_name: "SBI Life Insurance", sector: "Insurance", exchange: "NSE" },
+  { symbol: "SHREECEM", yahoo_symbol: "SHREECEM.NS", company_name: "Shree Cement Ltd", sector: "Cement", exchange: "NSE" },
+  { symbol: "INDUSINDBK", yahoo_symbol: "INDUSINDBK.NS", company_name: "IndusInd Bank", sector: "Banking", exchange: "NSE" },
+  { symbol: "BPCL", yahoo_symbol: "BPCL.NS", company_name: "Bharat Petroleum", sector: "Energy", exchange: "NSE" },
+  { symbol: "HINDALCO", yahoo_symbol: "HINDALCO.NS", company_name: "Hindalco Industries", sector: "Metals", exchange: "NSE" },
+  { symbol: "TATACONSUM", yahoo_symbol: "TATACONSUM.NS", company_name: "Tata Consumer Products", sector: "FMCG", exchange: "NSE" },
+  { symbol: "UPL", yahoo_symbol: "UPL.NS", company_name: "UPL Ltd", sector: "Chemicals", exchange: "NSE" },
+  { symbol: "HDFCLIFE", yahoo_symbol: "HDFCLIFE.NS", company_name: "HDFC Life Insurance", sector: "Insurance", exchange: "NSE" },
+  // NIFTY NEXT 50
+  { symbol: "BAJAJ-AUTO", yahoo_symbol: "BAJAJ-AUTO.NS", company_name: "Bajaj Auto Ltd", sector: "Automobile", exchange: "NSE" },
+  { symbol: "DABUR", yahoo_symbol: "DABUR.NS", company_name: "Dabur India Ltd", sector: "FMCG", exchange: "NSE" },
+  { symbol: "GODREJCP", yahoo_symbol: "GODREJCP.NS", company_name: "Godrej Consumer Products", sector: "FMCG", exchange: "NSE" },
+  { symbol: "HAVELLS", yahoo_symbol: "HAVELLS.NS", company_name: "Havells India Ltd", sector: "Electronics", exchange: "NSE" },
+  { symbol: "PIDILITIND", yahoo_symbol: "PIDILITIND.NS", company_name: "Pidilite Industries", sector: "Chemicals", exchange: "NSE" },
+  { symbol: "SIEMENS", yahoo_symbol: "SIEMENS.NS", company_name: "Siemens Ltd", sector: "Engineering", exchange: "NSE" },
+  { symbol: "DLF", yahoo_symbol: "DLF.NS", company_name: "DLF Ltd", sector: "Real Estate", exchange: "NSE" },
+  { symbol: "ADANIGREEN", yahoo_symbol: "ADANIGREEN.NS", company_name: "Adani Green Energy", sector: "Renewable Energy", exchange: "NSE" },
+  { symbol: "BANKBARODA", yahoo_symbol: "BANKBARODA.NS", company_name: "Bank of Baroda", sector: "Banking", exchange: "NSE" },
+  { symbol: "PNB", yahoo_symbol: "PNB.NS", company_name: "Punjab National Bank", sector: "Banking", exchange: "NSE" },
+  { symbol: "TATAPOWER", yahoo_symbol: "TATAPOWER.NS", company_name: "Tata Power Co.", sector: "Power", exchange: "NSE" },
+  { symbol: "IOC", yahoo_symbol: "IOC.NS", company_name: "Indian Oil Corporation", sector: "Energy", exchange: "NSE" },
+  { symbol: "BIOCON", yahoo_symbol: "BIOCON.NS", company_name: "Biocon Ltd", sector: "Pharma", exchange: "NSE" },
+  { symbol: "ICICIPRULI", yahoo_symbol: "ICICIPRULI.NS", company_name: "ICICI Prudential", sector: "Insurance", exchange: "NSE" },
+  { symbol: "COLPAL", yahoo_symbol: "COLPAL.NS", company_name: "Colgate-Palmolive India", sector: "FMCG", exchange: "NSE" },
+  { symbol: "MARICO", yahoo_symbol: "MARICO.NS", company_name: "Marico Ltd", sector: "FMCG", exchange: "NSE" },
+  { symbol: "AMBUJACEM", yahoo_symbol: "AMBUJACEM.NS", company_name: "Ambuja Cements", sector: "Cement", exchange: "NSE" },
+  { symbol: "ACC", yahoo_symbol: "ACC.NS", company_name: "ACC Ltd", sector: "Cement", exchange: "NSE" },
+  { symbol: "BERGEPAINT", yahoo_symbol: "BERGEPAINT.NS", company_name: "Berger Paints India", sector: "Consumer Goods", exchange: "NSE" },
+  { symbol: "MRF", yahoo_symbol: "MRF.NS", company_name: "MRF Ltd", sector: "Tyres", exchange: "NSE" },
+  { symbol: "INDIGO", yahoo_symbol: "INDIGO.NS", company_name: "InterGlobe Aviation (IndiGo)", sector: "Aviation", exchange: "NSE" },
+  { symbol: "VEDL", yahoo_symbol: "VEDL.NS", company_name: "Vedanta Ltd", sector: "Metals", exchange: "NSE" },
+  { symbol: "GAIL", yahoo_symbol: "GAIL.NS", company_name: "GAIL (India) Ltd", sector: "Oil & Gas", exchange: "NSE" },
+  { symbol: "LUPIN", yahoo_symbol: "LUPIN.NS", company_name: "Lupin Ltd", sector: "Pharma", exchange: "NSE" },
+  { symbol: "TORNTPHARM", yahoo_symbol: "TORNTPHARM.NS", company_name: "Torrent Pharmaceuticals", sector: "Pharma", exchange: "NSE" },
+  { symbol: "ZOMATO", yahoo_symbol: "ZOMATO.NS", company_name: "Zomato Ltd", sector: "Food Tech", exchange: "NSE" },
+  { symbol: "PAYTM", yahoo_symbol: "PAYTM.NS", company_name: "One97 Communications (Paytm)", sector: "Fintech", exchange: "NSE" },
+  { symbol: "NYKAA", yahoo_symbol: "NYKAA.NS", company_name: "FSN E-Commerce (Nykaa)", sector: "E-Commerce", exchange: "NSE" },
+  { symbol: "POLICYBZR", yahoo_symbol: "POLICYBZR.NS", company_name: "PB Fintech (PolicyBazaar)", sector: "Insurtech", exchange: "NSE" },
+  { symbol: "IRCTC", yahoo_symbol: "IRCTC.NS", company_name: "Indian Railway Catering", sector: "Travel", exchange: "NSE" },
+  { symbol: "HAL", yahoo_symbol: "HAL.NS", company_name: "Hindustan Aeronautics", sector: "Defence", exchange: "NSE" },
+  { symbol: "BEL", yahoo_symbol: "BEL.NS", company_name: "Bharat Electronics", sector: "Defence", exchange: "NSE" },
+  { symbol: "Dixon", yahoo_symbol: "DIXON.NS", company_name: "Dixon Technologies", sector: "Electronics", exchange: "NSE" },
+  { symbol: "TRENT", yahoo_symbol: "TRENT.NS", company_name: "Trent Ltd (Westside)", sector: "Retail", exchange: "NSE" },
+  { symbol: "PERSISTENT", yahoo_symbol: "PERSISTENT.NS", company_name: "Persistent Systems", sector: "IT", exchange: "NSE" },
+  { symbol: "COFORGE", yahoo_symbol: "COFORGE.NS", company_name: "Coforge Ltd (NIIT Tech)", sector: "IT", exchange: "NSE" },
+  { symbol: "MPHASIS", yahoo_symbol: "MPHASIS.NS", company_name: "Mphasis Ltd", sector: "IT", exchange: "NSE" },
+  { symbol: "LTIM", yahoo_symbol: "LTIM.NS", company_name: "LTIMindtree Ltd", sector: "IT", exchange: "NSE" },
+  { symbol: "LICI", yahoo_symbol: "LICI.NS", company_name: "Life Insurance Corp", sector: "Insurance", exchange: "NSE" },
+  { symbol: "TATACHEM", yahoo_symbol: "TATACHEM.NS", company_name: "Tata Chemicals", sector: "Chemicals", exchange: "NSE" },
+  { symbol: "VOLTAS", yahoo_symbol: "VOLTAS.NS", company_name: "Voltas Ltd", sector: "Consumer Durables", exchange: "NSE" },
+  { symbol: "PAGEIND", yahoo_symbol: "PAGEIND.NS", company_name: "Page Industries (Jockey)", sector: "Textiles", exchange: "NSE" },
+  { symbol: "MUTHOOTFIN", yahoo_symbol: "MUTHOOTFIN.NS", company_name: "Muthoot Finance", sector: "Finance", exchange: "NSE" },
+  { symbol: "BANDHANBNK", yahoo_symbol: "BANDHANBNK.NS", company_name: "Bandhan Bank", sector: "Banking", exchange: "NSE" },
+  { symbol: "FEDERALBNK", yahoo_symbol: "FEDERALBNK.NS", company_name: "Federal Bank", sector: "Banking", exchange: "NSE" },
+  { symbol: "IDFCFIRSTB", yahoo_symbol: "IDFCFIRSTB.NS", company_name: "IDFC First Bank", sector: "Banking", exchange: "NSE" },
+  { symbol: "CANBK", yahoo_symbol: "CANBK.NS", company_name: "Canara Bank", sector: "Banking", exchange: "NSE" },
+  { symbol: "RECLTD", yahoo_symbol: "RECLTD.NS", company_name: "REC Ltd", sector: "Finance", exchange: "NSE" },
+  { symbol: "PFC", yahoo_symbol: "PFC.NS", company_name: "Power Finance Corp", sector: "Finance", exchange: "NSE" },
+  { symbol: "NHPC", yahoo_symbol: "NHPC.NS", company_name: "NHPC Ltd", sector: "Power", exchange: "NSE" },
+  { symbol: "IRFC", yahoo_symbol: "IRFC.NS", company_name: "Indian Railway Finance", sector: "Finance", exchange: "NSE" },
+  { symbol: "ADANIPOWER", yahoo_symbol: "ADANIPOWER.NS", company_name: "Adani Power Ltd", sector: "Power", exchange: "NSE" },
+  { symbol: "JUBLFOOD", yahoo_symbol: "JUBLFOOD.NS", company_name: "Jubilant FoodWorks (Dominos)", sector: "Food", exchange: "NSE" },
+  { symbol: "TATAELXSI", yahoo_symbol: "TATAELXSI.NS", company_name: "Tata Elxsi Ltd", sector: "IT", exchange: "NSE" },
+  { symbol: "SAIL", yahoo_symbol: "SAIL.NS", company_name: "Steel Authority of India", sector: "Metals", exchange: "NSE" },
+  { symbol: "NMDC", yahoo_symbol: "NMDC.NS", company_name: "NMDC Ltd", sector: "Mining", exchange: "NSE" },
+  { symbol: "MOTHERSON", yahoo_symbol: "MOTHERSON.NS", company_name: "Samvardhana Motherson", sector: "Auto Ancillary", exchange: "NSE" },
+  { symbol: "BOSCHLTD", yahoo_symbol: "BOSCHLTD.NS", company_name: "Bosch Ltd", sector: "Auto Ancillary", exchange: "NSE" },
+  // BSE-only popular stocks
+  { symbol: "RELIANCE", yahoo_symbol: "RELIANCE.BO", company_name: "Reliance Industries (BSE)", sector: "Energy", exchange: "BSE" },
+  { symbol: "TCS", yahoo_symbol: "TCS.BO", company_name: "Tata Consultancy (BSE)", sector: "IT", exchange: "BSE" },
+  { symbol: "HDFCBANK", yahoo_symbol: "HDFCBANK.BO", company_name: "HDFC Bank (BSE)", sector: "Banking", exchange: "BSE" },
+  { symbol: "INFY", yahoo_symbol: "INFY.BO", company_name: "Infosys (BSE)", sector: "IT", exchange: "BSE" },
+  { symbol: "ICICIBANK", yahoo_symbol: "ICICIBANK.BO", company_name: "ICICI Bank (BSE)", sector: "Banking", exchange: "BSE" },
+];
+
+export function searchIndianStocks(query: string, limit = 10): IndianStockEntry[] {
+  const q = query.toLowerCase();
+  return INDIAN_STOCKS
+    .filter(s =>
+      s.symbol.toLowerCase().includes(q) ||
+      s.company_name.toLowerCase().includes(q) ||
+      s.sector.toLowerCase().includes(q)
+    )
+    .slice(0, limit);
+}

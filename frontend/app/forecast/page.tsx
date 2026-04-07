@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
 } from "recharts";
-import { fetchForecast, type ForecastResult, fetchMarketOverview, type MarketQuote } from "@/lib/api";
-import { Loader2, TrendingUp, Activity, Shield, Brain, BarChart3, Newspaper, Wallet } from "lucide-react";
+import { fetchForecast, type ForecastResult, fetchIndianStocksSearch, type IndianStock } from "@/lib/api";
+import { searchIndianStocks, type IndianStockEntry } from "@/lib/indian-stocks-data";
+import { Loader2, TrendingUp, Brain, Newspaper, Wallet, Search, X, Plus } from "lucide-react";
 import clsx from "clsx";
 
-const COLORS = ["#1a3a5c", "#2d8f6f", "#e8913a", "#6366f1", "#ec4899", "#f59e0b"];
+const COLORS = ["#1a3a5c", "#2d8f6f", "#e8913a", "#6366f1", "#ec4899", "#f59e0b", "#14b8a6", "#8b5cf6"];
 
 const EXPERIENCE_MODES = [
   { id: "prediction", label: "Stock Prediction", icon: TrendingUp },
@@ -25,8 +26,37 @@ export default function ForecastPage() {
   const [mode, setMode] = useState("prediction");
   const [loading, setLoading] = useState(false);
   const [forecastData, setForecastData] = useState<ForecastResult | null>(null);
-  const [compareTickers, setCompareTickers] = useState(["INFY.NS", "TCS.NS", "RELIANCE.NS"]);
+  const [compareTickers, setCompareTickers] = useState<string[]>(["INFY.NS", "TCS.NS", "RELIANCE.NS"]);
   const [multiForecasts, setMultiForecasts] = useState<Record<string, ForecastResult>>({});
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<IndianStockEntry[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Client-side search (instant, no API dependency)
+  useEffect(() => {
+    if (searchQuery.length < 2) { setSearchResults([]); return; }
+    const results = searchIndianStocks(searchQuery, 10);
+    setSearchResults(results);
+  }, [searchQuery]);
+
+
+  const addTicker = (yahooSymbol: string) => {
+    if (!compareTickers.includes(yahooSymbol)) {
+      setCompareTickers(prev => [...prev, yahooSymbol]);
+    }
+    setTicker(yahooSymbol);
+    setSearchQuery("");
+    setShowSearch(false);
+  };
+
+  const removeTicker = (t: string) => {
+    setCompareTickers(prev => prev.filter(x => x !== t));
+    if (ticker === t && compareTickers.length > 1) {
+      setTicker(compareTickers.find(x => x !== t) || compareTickers[0]);
+    }
+  };
 
   // KPI calculations
   const kpis = useMemo(() => {
@@ -38,8 +68,6 @@ export default function ForecastPage() {
     const last = pts[pts.length - 1].price;
     const years = Math.max(pts.length / 252, 1);
     const annualReturn = ((last / first) ** (1 / years) - 1) * 100;
-
-    // Simple volatility from returns
     const returns: number[] = [];
     for (let i = 1; i < pts.length; i++) {
       returns.push((pts[i].price - pts[i - 1].price) / pts[i - 1].price);
@@ -50,7 +78,6 @@ export default function ForecastPage() {
     const annualVol = dailyVol * Math.sqrt(252) * 100;
     const riskFreeRate = 6;
     const sharpe = annualVol > 0 ? (annualReturn - riskFreeRate) / annualVol : 0;
-
     return { annualReturn, volatility: annualVol, sharpe };
   }, [forecastData]);
 
@@ -58,10 +85,8 @@ export default function ForecastPage() {
   const performanceData = useMemo(() => {
     const tickers = Object.keys(multiForecasts);
     if (tickers.length === 0) return [];
-
     const maxLen = Math.max(...tickers.map(t => multiForecasts[t].points.length));
     const data: Record<string, number | string>[] = [];
-
     for (let i = 0; i < maxLen; i++) {
       const row: Record<string, number | string> = {};
       tickers.forEach(t => {
@@ -77,7 +102,6 @@ export default function ForecastPage() {
     return data;
   }, [multiForecasts]);
 
-  // Pie chart data
   const pieData = useMemo(() => {
     return compareTickers.map(t => ({
       name: t.replace(".NS", "").replace(".BO", ""),
@@ -86,6 +110,7 @@ export default function ForecastPage() {
   }, [compareTickers]);
 
   const runForecast = async () => {
+    if (compareTickers.length === 0) return;
     setLoading(true);
     try {
       const results: Record<string, ForecastResult> = {};
@@ -102,14 +127,12 @@ export default function ForecastPage() {
     }
   };
 
-  useEffect(() => {
-    runForecast();
-  }, []);
+  useEffect(() => { runForecast(); }, []);
 
   return (
     <div className="flex min-h-screen">
       {/* ── Sidebar Controls ── */}
-      <aside className="w-[280px] shrink-0 border-r border-slate-200 bg-white p-6 space-y-8">
+      <aside className="w-[300px] shrink-0 border-r border-slate-200 bg-white p-6 space-y-6 overflow-y-auto">
         <div>
           <h1 className="text-xl font-bold text-slate-800">FinAI Control Deck</h1>
           <p className="text-xs text-slate-500 mt-1 leading-relaxed">
@@ -117,48 +140,106 @@ export default function ForecastPage() {
           </p>
         </div>
 
-        {/* Primary Ticker */}
+        {/* Stock Search */}
         <div className="space-y-2">
+          <label className="text-xs font-semibold text-slate-600">Add stocks (NSE / BSE)</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search e.g. Infosys, TCS..."
+              value={searchQuery}
+              onFocus={() => setShowSearch(true)}
+              onChange={(e) => { setSearchQuery(e.target.value); setShowSearch(true); }}
+              className="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none"
+            />
+            {showSearch && searchQuery.length >= 2 && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg max-h-[250px] overflow-y-auto">
+                {searchResults.length === 0 ? (
+                  <div className="text-xs text-slate-400 text-center py-4">No results found</div>
+                ) : (
+
+                  searchResults.map(s => (
+                    <button
+                      key={s.yahoo_symbol}
+                      onClick={() => addTicker(s.yahoo_symbol)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-teal-50 transition-colors border-b border-slate-100 last:border-0"
+                    >
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">{s.company_name}</div>
+                        <div className="text-[10px] text-slate-400">{s.yahoo_symbol} · {s.exchange} · {s.sector}</div>
+                      </div>
+                      {compareTickers.includes(s.yahoo_symbol) ? (
+                        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded">Added</span>
+                      ) : (
+                        <Plus className="h-3.5 w-3.5 text-slate-400" />
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Selected Tickers */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-slate-600">Compare list ({compareTickers.length})</label>
+          <div className="flex flex-wrap gap-1.5">
+            {compareTickers.map(t => (
+              <div
+                key={t}
+                onClick={() => setTicker(t)}
+                className={clsx(
+                  "flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold cursor-pointer transition-all",
+                  ticker === t
+                    ? "bg-teal-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                )}
+              >
+                {t.replace(".NS", "").replace(".BO", "")}
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeTicker(t); }}
+                  className="ml-0.5 hover:text-red-400"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Primary Ticker Display */}
+        <div className="space-y-1">
           <label className="text-xs font-semibold text-slate-600">Primary ticker</label>
-          <input
-            type="text"
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value.toUpperCase())}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none"
-          />
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-teal-700">
+            {ticker}
+          </div>
         </div>
 
         {/* History Window */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-600">History window</label>
-          <input
-            type="range" min={1} max={10} value={historyWindow}
-            onChange={(e) => setHistoryWindow(+e.target.value)}
-            className="w-full accent-teal-600"
-          />
+          <label className="text-xs font-semibold text-slate-600">History window (years)</label>
+          <input type="range" min={1} max={10} value={historyWindow} onChange={(e) => setHistoryWindow(+e.target.value)} className="w-full accent-teal-600" />
           <div className="text-center text-sm font-semibold text-teal-700">{historyWindow}</div>
         </div>
 
         {/* Forecast Horizon */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-600">Forecast horizon</label>
-          <input
-            type="range" min={1} max={60} value={forecastHorizon}
-            onChange={(e) => setForecastHorizon(+e.target.value)}
-            className="w-full accent-teal-600"
-          />
+          <label className="text-xs font-semibold text-slate-600">Forecast horizon (months)</label>
+          <input type="range" min={1} max={60} value={forecastHorizon} onChange={(e) => setForecastHorizon(+e.target.value)} className="w-full accent-teal-600" />
           <div className="text-center text-sm font-semibold text-teal-700">{forecastHorizon}</div>
         </div>
 
         {/* Experience Mode */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <label className="text-xs font-semibold text-slate-600">Choose experience</label>
           {EXPERIENCE_MODES.map(m => (
             <button
               key={m.id}
               onClick={() => setMode(m.id)}
               className={clsx(
-                "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all text-left",
+                "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all text-left",
                 mode === m.id
                   ? "bg-teal-50 text-teal-700 font-semibold ring-1 ring-teal-200"
                   : "text-slate-600 hover:bg-slate-50"
@@ -178,10 +259,17 @@ export default function ForecastPage() {
         {/* Run Button */}
         <button
           onClick={runForecast}
-          disabled={loading}
+          disabled={loading || compareTickers.length === 0}
           className="w-full rounded-lg bg-teal-600 py-3 text-sm font-bold text-white hover:bg-teal-700 disabled:opacity-50 transition-colors"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Run Analysis"}
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Analyzing {compareTickers.length} stocks...
+            </span>
+          ) : (
+            `Run Analysis (${compareTickers.length} stocks)`
+          )}
         </button>
       </aside>
 
@@ -223,7 +311,6 @@ export default function ForecastPage() {
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
-          {/* Performance Wave */}
           <div className="rounded-xl bg-white shadow-sm p-6">
             <h3 className="text-sm font-bold text-slate-700 mb-4">Relative Performance Wave</h3>
             {loading ? (
@@ -236,45 +323,22 @@ export default function ForecastPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} />
                   <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 12 }}
-                  />
+                  <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 12 }} />
                   <Legend iconType="line" wrapperStyle={{ fontSize: 12 }} />
                   {compareTickers.map((t, i) => (
-                    <Line
-                      key={t}
-                      type="monotone"
-                      dataKey={t}
-                      stroke={COLORS[i % COLORS.length]}
-                      strokeWidth={2}
-                      dot={false}
-                      name={t.replace(".NS", "").replace(".BO", "")}
-                    />
+                    <Line key={t} type="monotone" dataKey={t} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot={false} name={t.replace(".NS", "").replace(".BO", "")} />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          {/* Portfolio Mix */}
           <div className="rounded-xl bg-white shadow-sm p-6">
             <h3 className="text-sm font-bold text-slate-700 mb-4">Equal-Weight Mix</h3>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  dataKey="value"
-                  label={({ value }) => `${value}%`}
-                  labelLine={false}
-                  stroke="none"
-                >
-                  {pieData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="value" label={({ value }) => `${value}%`} labelLine={false} stroke="none">
+                  {pieData.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
                 </Pie>
                 <Legend iconType="square" wrapperStyle={{ fontSize: 12 }} />
                 <Tooltip />
@@ -288,7 +352,7 @@ export default function ForecastPage() {
           <div className="rounded-xl bg-white shadow-sm p-6">
             <div className="flex items-center gap-2 mb-3">
               <Brain className="h-4 w-4 text-teal-600" />
-              <h3 className="text-sm font-bold text-slate-700">AI Insight</h3>
+              <h3 className="text-sm font-bold text-slate-700">AI Insight — {ticker.replace(".NS","").replace(".BO","")}</h3>
             </div>
             <p className="text-sm text-slate-600 leading-relaxed">{forecastData.narrative}</p>
           </div>
