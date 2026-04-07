@@ -41,25 +41,33 @@ export function Sidebar() {
           ))}
         </div>
       </div>
-      <aside className="sticky top-0 hidden h-screen border-r border-white/10 bg-black/20 p-6 lg:block">
-        <div className="mb-8">
-          <div className="text-xs uppercase tracking-[0.3em] text-accent">ScalpVision AI</div>
-          <p className="mt-3 text-sm text-slate-400">Scalping intelligence for stock and crypto chart screenshots.</p>
+      <aside className="sticky top-0 hidden h-screen bg-black/20 p-6 backdrop-blur-3xl lg:block">
+        <div className="mb-10 px-4">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-accent shadow-[0_0_10px_rgba(6,182,212,0.5)] animate-pulse" />
+            <div className="font-heading text-sm font-bold uppercase tracking-[0.2em] text-white">ScalpVision AI</div>
+          </div>
+          <p className="mt-4 text-xs leading-relaxed text-slate-500">Premium scalp intelligence for global markets.</p>
         </div>
-        <nav className="space-y-2">
-          {navItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={clsx(
-                "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition",
-                pathname === href ? "bg-accent/15 text-accent shadow-glow" : "text-slate-300 hover:bg-white/5 hover:text-white"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </Link>
-          ))}
+        <nav className="space-y-1">
+          {navItems.map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={clsx(
+                  "group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200",
+                  isActive 
+                    ? "bg-accent/10 text-accent shadow-glow" 
+                    : "text-slate-400 hover:bg-white/[0.03] hover:text-white"
+                )}
+              >
+                <Icon className={clsx("h-4 w-4 transition-transform duration-200 group-hover:scale-110", isActive ? "text-accent" : "text-slate-500 group-hover:text-white")} />
+                {label}
+              </Link>
+            );
+          })}
         </nav>
       </aside>
     </>

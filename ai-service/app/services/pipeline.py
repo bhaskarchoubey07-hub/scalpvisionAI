@@ -24,18 +24,36 @@ def run_analysis_pipeline(request: AnalyzeRequest) -> AnalyzeResponse:
         cv_data, 
         request.market, 
         request.symbol, 
-        request.timeframe
+        request.timeframe,
+        current_price=request.current_price,
+        rsi=request.rsi,
+        macd_bias=request.macd_bias
     )
 
     # 3. AI Explanation (Groq)
     explanation = ai_explainer.explain_trade(strategy)
 
     # 4. Map to Output Schema
-    # Mocking indicators for now as requested (could be expanded)
-    indicators = [
-        IndicatorReading(name="RSI", value="Approx 55", bias="neutral"),
-        IndicatorReading(name="Trend", value=strategy["trend"], bias="bullish" if strategy["direction"] == "long" else "bearish"),
-    ]
+    indicators = []
+    if strategy.get("rsi") is not None:
+        indicators.append(IndicatorReading(
+            name="RSI", 
+            value=f"{strategy['rsi']:.1f}", 
+            bias="bearish" if strategy["rsi"] > 70 else ("bullish" if strategy["rsi"] < 30 else "neutral")
+        ))
+    
+    if strategy.get("macd_bias"):
+        indicators.append(IndicatorReading(
+            name="MACD", 
+            value=strategy["macd_bias"].capitalize(), 
+            bias=strategy["macd_bias"]
+        ))
+
+    indicators.append(IndicatorReading(
+        name="Trend", 
+        value=strategy["trend"].capitalize(), 
+        bias="bullish" if strategy["direction"] == "long" else ("bearish" if strategy["direction"] == "short" else "neutral")
+    ))
 
     return AnalyzeResponse(
         market=strategy["market"],

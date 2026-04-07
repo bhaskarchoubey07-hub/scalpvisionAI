@@ -5,6 +5,9 @@ type AnalysisRequest = {
   market: string;
   symbol?: string;
   timeframe?: string;
+  current_price?: number;
+  rsi?: number;
+  macd_bias?: string;
 };
 
 type AnalysisResult = {
@@ -40,7 +43,10 @@ export async function analyzeChart(request: AnalysisRequest): Promise<AnalysisRe
       image_url: request.imageUrl,
       market: request.market,
       symbol: request.symbol,
-      timeframe: request.timeframe
+      timeframe: request.timeframe,
+      current_price: request.current_price,
+      rsi: request.rsi,
+      macd_bias: request.macd_bias
     })
   });
 
@@ -61,8 +67,8 @@ export async function analyzeChart(request: AnalysisRequest): Promise<AnalysisRe
     risk_reward: safeNum(data.risk_reward),
     confidence: safeNum(data.confidence),
     pattern: data.patterns?.[0] || null,
-    rsi: safeNum(data.indicators?.find((i: any) => i.name === "RSI")?.value.match(/\d+/)?.[0]),
-    macd: data.indicators?.find((i: any) => i.name === "MACD")?.bias || null,
+    rsi: safeNum(data.indicators?.find((i: any) => i.name === "RSI")?.value) ?? request.rsi ?? null,
+    macd: data.indicators?.find((i: any) => i.name === "MACD")?.bias || request.macd_bias || null,
     timeframe: data.timeframe,
     summary: data.summary,
   };

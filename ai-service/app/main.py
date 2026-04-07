@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 
-from .schemas import AnalyzeRequest, AnalyzeResponse
+from .schemas import AnalyzeRequest, AnalyzeResponse, AdvisorRequest, AdvisorResponse
 from .services.pipeline import run_analysis_pipeline
+from .services.ai_explainer import ai_explainer
 
 app = FastAPI(title="ScalpVision AI Engine", version="0.1.0")
 
@@ -14,3 +15,13 @@ def health():
 @app.post("/analyze-chart", response_model=AnalyzeResponse)
 def analyze_chart(payload: AnalyzeRequest):
     return run_analysis_pipeline(payload)
+
+
+@app.post("/advice", response_model=AdvisorResponse)
+def get_advice(payload: AdvisorRequest):
+    answer = ai_explainer.ask_advisor(
+        question=payload.question,
+        history=payload.history,
+        context=payload.context
+    )
+    return AdvisorResponse(answer=answer)

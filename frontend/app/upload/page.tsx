@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { SectionHeader } from "@/components/section-header";
 import { UploadDropzone } from "@/components/upload-dropzone";
 import { uploadChart, analyzeChart, type AnalysisResult } from "@/lib/api";
-import { CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { CheckCircle2, Loader2, AlertCircle, ShieldCheck, Zap } from "lucide-react";
+import clsx from "clsx";
 
 type Step = {
   label: string;
@@ -13,10 +15,10 @@ type Step = {
 };
 
 const INITIAL_STEPS: Step[] = [
-  { label: "Image validation and rate limit protection", status: "pending" },
-  { label: "Uploading chart to secure storage", status: "pending" },
-  { label: "Indicator, pattern, and support-resistance detection", status: "pending" },
-  { label: "Signal generation with confidence scoring", status: "pending" },
+  { label: "Security validation & rate protection", status: "pending" },
+  { label: "Optimized cloud storage upload", status: "pending" },
+  { label: "Computer Vision pattern detection", status: "pending" },
+  { label: "AI neural engine signal generation", status: "pending" },
 ];
 
 export default function UploadPage() {
@@ -38,42 +40,31 @@ export default function UploadPage() {
     setSteps(INITIAL_STEPS);
 
     try {
-      // Step 0 — validate
       setStep(0, "loading");
-      if (!file.type.startsWith("image/")) {
-        throw new Error("Only image files are supported.");
-      }
-      if (file.size > 8 * 1024 * 1024) {
-        throw new Error("Image must be under 8 MB.");
-      }
-      await new Promise((r) => setTimeout(r, 400));
+      if (!file.type.startsWith("image/")) throw new Error("Only image files are supported.");
+      if (file.size > 8 * 1024 * 1024) throw new Error("Image must be under 8 MB.");
+      await new Promise((r) => setTimeout(r, 600));
       setStep(0, "done");
 
-      // Step 1 — upload
       setStep(1, "loading");
       const { imageUrl } = await uploadChart(file);
       setStep(1, "done");
 
-      // Step 2 — pattern detection (brief pause for UX)
       setStep(2, "loading");
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 800));
       setStep(2, "done");
 
-      // Step 3 — AI analysis
       setStep(3, "loading");
       const result: AnalysisResult = await analyzeChart(imageUrl, "stock");
       setStep(3, "done");
 
-      // Store result and navigate
       sessionStorage.setItem("latestSignal", JSON.stringify({ ...result, imageUrl }));
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 400));
       router.push("/signals/result");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unexpected error";
       setError(msg);
-      setSteps((prev) =>
-        prev.map((s) => (s.status === "loading" ? { ...s, status: "error" } : s))
-      );
+      setSteps((prev) => prev.map((s) => (s.status === "loading" ? { ...s, status: "error" } : s)));
     } finally {
       setIsRunning(false);
     }
@@ -82,69 +73,81 @@ export default function UploadPage() {
   const allDone = steps.every((s) => s.status === "done");
 
   return (
-    <div className="grid-shell py-8">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="grid-shell py-8"
+    >
       <SectionHeader
-        eyebrow="Chart Intake"
-        title="Upload a screenshot for scalp analysis"
-        description="The pipeline validates the image, detects chart boundaries, infers market context, and routes the screenshot to the AI engine."
+        eyebrow="Intelligence Intake"
+        title="Upload market screenshot"
+        description="Our neural pipeline processes your chart to extract trends, levels, and high-probability trade setups."
       />
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <UploadDropzone onSelect={handleSelect} disabled={isRunning} />
 
-        <div className="glass rounded-[2rem] p-6">
-          <div className="text-sm text-slate-400">Pipeline checklist</div>
-          <div className="mt-4 space-y-3 text-sm text-slate-300">
-            {steps.map((step, i) => (
-              <div
-                key={i}
-                className={`flex items-center gap-3 rounded-2xl border p-4 transition-all duration-300 ${
-                  step.status === "done"
-                    ? "border-accent/40 bg-accent/5 text-accent"
-                    : step.status === "loading"
-                    ? "border-white/20 bg-white/5"
-                    : step.status === "error"
-                    ? "border-red-400/40 bg-red-400/5 text-red-400"
-                    : "border-white/10"
-                }`}
-              >
-                {step.status === "loading" && (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent" />
-                )}
-                {step.status === "done" && (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-accent" />
-                )}
-                {step.status === "error" && (
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-                )}
-                {step.status === "pending" && (
-                  <div className="h-4 w-4 shrink-0 rounded-full border border-white/20" />
-                )}
-                <span>{step.label}</span>
-              </div>
-            ))}
+      <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] mt-10">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+        >
+          <UploadDropzone onSelect={handleSelect} disabled={isRunning} />
+          
+          <div className="mt-8 flex items-center justify-center gap-6 text-slate-500">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
+              <ShieldCheck className="h-3.5 w-3.5 text-accent" /> Secure Processing
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
+              <Zap className="h-3.5 w-3.5 text-accent" /> Real-time Analysis
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="glass-card p-8"
+        >
+          <div className="flex items-center gap-2 mb-6">
+            <h3 className="font-heading text-sm font-bold uppercase tracking-widest text-white">Pipeline Consensus</h3>
+          </div>
+          
+          <div className="space-y-3">
+            <AnimatePresence mode="popLayout">
+              {steps.map((step, i) => (
+                <motion.div
+                  key={i}
+                  layout
+                  className={clsx(
+                    "flex items-center gap-4 rounded-2xl border p-4 transition-all duration-500",
+                    step.status === "done" ? "border-accent/30 bg-accent/[0.03] text-accent" :
+                    step.status === "loading" ? "border-white/20 bg-white/[0.05]" :
+                    step.status === "error" ? "border-red-500/30 bg-red-500/[0.03] text-red-400" :
+                    "border-white/[0.05] bg-white/[0.01]"
+                  )}
+                >
+                  {step.status === "loading" ? <Loader2 className="h-4 w-4 animate-spin text-accent" /> :
+                   step.status === "done" ? <CheckCircle2 className="h-4 w-4 text-accent" /> :
+                   step.status === "error" ? <AlertCircle className="h-4 w-4 text-red-400" /> :
+                   <div className="h-4 w-4 rounded-full border border-white/20" />}
+                  <span className="text-xs font-medium tracking-tight">{step.label}</span>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
 
-          <div
-            className={`mt-6 rounded-2xl p-4 text-sm transition-all duration-300 ${
-              error
-                ? "bg-red-400/10 text-red-400"
-                : allDone
-                ? "bg-accent/10 text-accent"
-                : isRunning
-                ? "bg-white/5 text-slate-300"
-                : "bg-accent/10 text-accent"
-            }`}
-          >
-            {error
-              ? `Error: ${error}`
-              : allDone
-              ? "✓ Analysis complete — redirecting…"
-              : isRunning
-              ? "Analyzing your chart…"
-              : "Awaiting chart screenshot"}
+          <div className={clsx(
+            "mt-8 rounded-2xl p-5 text-center text-xs font-bold tracking-widest transition-all duration-500",
+            error ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+            allDone ? "bg-accent/10 text-accent border border-accent/20" :
+            isRunning ? "bg-white/5 text-slate-400 border border-white/10" :
+            "bg-white/[0.02] text-slate-500 border border-white/[0.05]"
+          )}>
+            {error ? `SYSTEM ERROR : ${error.toUpperCase()}` :
+             allDone ? "PIPELINE COMPLETE • REDIRECTING..." :
+             isRunning ? "NEURAL ENGINE DEPLOYED..." :
+             "AWAITING INPUT SOURCE"}
           </div>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }

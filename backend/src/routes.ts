@@ -7,6 +7,7 @@ import { pool } from "./db.js";
 import { requireAuth } from "./middleware/auth.js";
 import { fetchMarketOverview, fetchMarketQuote, fetchYahooCandles } from "./services/marketData.js";
 import { createAuthToken, createUser, verifyUser } from "./services/auth.js";
+import { RSI, MACD } from "technicalindicators";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -187,7 +188,54 @@ export function createRouter() {
       timeframe: z.string().optional()
     });
     const payload = schema.parse(request.body);
-    const result = await analyzeChart(payload);
+    
+    let currentPrice: number | undefined;
+    let rsiValue: number | undefined;
+    let macdBias: string | undefined;
+
+    if (payload.symbol) {
+      try {
+        const [quote, candles] = await Promise.all([
+          fetchMarketQuote(payload.market, payload.symbol),
+          fetchYahooCandles(payload.symbol, "5d", payload.timeframe || "1h")
+        ]);
+
+        currentPrice = quote.price;
+
+        if (candles.length > 14) {
+          const closes = candles.map(c => c.close);
+          
+          // Calculate RSI
+          const rsiInput = { values: closes, period: 14 };
+          const rsiResults = RSI.calculate(rsiInput);
+          rsiValue = rsiResults[rsiResults.length - 1];
+
+          // Calculate MACD
+          const macdInput = {
+            values: closes,
+            fastPeriod: 12,
+            slowPeriod: 26,
+            signalPeriod: 9,
+            SimpleMAOscillator: false,
+            SimpleMASignal: false
+          };
+          const macdResults = MACD.calculate(macdInput);
+          const lastMacd = macdResults[macdResults.length - 1];
+          if (lastMacd) {
+            macdBias = lastMacd.MACD! > lastMacd.signal! ? "bullish" : "bearish";
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching market data for analysis:", err);
+      }
+    }
+
+    const result = await analyzeChart({
+      ...payload,
+      current_price: currentPrice,
+      rsi: rsiValue,
+      macd_bias: macdBias
+    });
     return response.json(result);
   }));
 
@@ -272,6 +320,30 @@ export function createRouter() {
 
     const message = error instanceof Error ? error.message : "Unexpected server error";
     return response.status(500).json({ error: message });
+  });
+
+  // --- AI ADVISOR ---
+  router.post("/ai-advisor", async (req: Request, res: Response) => {
+    try {
+      const { question, history, context } = req.body;
+      const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
+
+      const response = await fetch(`${aiServiceUrl}/advice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, history, context })
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI Service returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Advisor Error:", error);
+      res.status(500).json({ error: "Failed to reach AI Advisor" });
+    }
   });
 
   return router;
