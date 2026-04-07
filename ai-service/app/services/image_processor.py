@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import requests
+import base64
 from io import BytesIO
 
 class ImageProcessor:
@@ -8,14 +9,23 @@ class ImageProcessor:
         pass
 
     def load_image(self, image_url: str):
-        """Loads image from URL and returns as OpenCV BGR image."""
+        """Loads image from URL or base64 string and returns as OpenCV BGR image."""
         try:
-            response = requests.get(image_url)
-            response.raise_for_status()
-            image_bytes = BytesIO(response.content)
-            image_arr = np.frombuffer(image_bytes.read(), np.uint8)
-            img = cv2.imdecode(image_arr, cv2.IMREAD_COLOR)
-            return img
+            if image_url.startswith("data:"):
+                # Handle base64 data URI
+                header, encoded = image_url.split(",", 1)
+                image_data = base64.b64decode(encoded)
+                image_arr = np.frombuffer(image_data, np.uint8)
+                img = cv2.imdecode(image_arr, cv2.IMREAD_COLOR)
+                return img
+            else:
+                # Handle standard URL
+                response = requests.get(image_url)
+                response.raise_for_status()
+                image_bytes = BytesIO(response.content)
+                image_arr = np.frombuffer(image_bytes.read(), np.uint8)
+                img = cv2.imdecode(image_arr, cv2.IMREAD_COLOR)
+                return img
         except Exception as e:
             print(f"Error loading image: {e}")
             return None

@@ -1,10 +1,10 @@
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
 
 class AnalyzeRequest(BaseModel):
-    image_url: Optional[HttpUrl] = None
+    image_url: Optional[str] = None
     market: Literal["stock", "crypto", "indian-stock", "forex"]
     symbol: Optional[str] = None
     timeframe: Optional[str] = "5m"
