@@ -72,10 +72,11 @@ async function fetchYahooQuote(symbol: string, market: "stock" | "indian-stock" 
   if (cached) return cached;
 
   const response = await fetch(
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalized)}?range=1d&interval=1m`
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalized)}?range=1d&interval=1m`,
+    { headers: { "User-Agent": "Mozilla/5.0 (compatible; ScalpVision/1.0; +https://scalpvision.io)" } }
   );
   if (!response.ok) {
-    throw new Error(`Yahoo Finance fallback failed with status ${response.status}`);
+    throw new Error(`Yahoo Finance failed with status ${response.status} for ${normalized}`);
   }
 
   const payload = (await response.json()) as {
@@ -210,23 +211,29 @@ export async function fetchMarketQuote(market: MarketType, symbol: string) {
   return fetchYahooQuote(symbol, "forex");
 }
 
+function settled<T>(results: PromiseSettledResult<T>[]): T[] {
+  return results
+    .filter((r): r is PromiseFulfilledResult<T> => r.status === "fulfilled")
+    .map((r) => r.value);
+}
+
 export async function fetchMarketOverview() {
-  const [stocks, crypto, indianStocks, forex] = await Promise.all([
-    Promise.all(defaultSymbols.stock.map((symbol) => fetchStockQuote(symbol))),
-    Promise.all(defaultSymbols.crypto.map((symbol) => fetchCryptoQuote(symbol))),
-    Promise.all(defaultSymbols["indian-stock"].map((symbol) => fetchYahooQuote(symbol, "indian-stock"))),
-    Promise.all(defaultSymbols.forex.map((symbol) => fetchYahooQuote(symbol, "forex")))
+  const [stockResults, cryptoResults, indianResults, forexResults] = await Promise.all([
+    Promise.allSettled(defaultSymbols.stock.map((s) => fetchStockQuote(s))),
+    Promise.allSettled(defaultSymbols.crypto.map((s) => fetchCryptoQuote(s))),
+    Promise.allSettled(defaultSymbols["indian-stock"].map((s) => fetchYahooQuote(s, "indian-stock"))),
+    Promise.allSettled(defaultSymbols.forex.map((s) => fetchYahooQuote(s, "forex")))
   ]);
 
   return {
-    stocks,
-    crypto,
-    indianStocks,
-    forex,
-    stockProvider: config.twelveDataApiKey ? "Twelve Data" : "Yahoo Finance fallback",
+    stocks: settled(stockResults),
+    crypto: settled(cryptoResults),
+    indianStocks: settled(indianResults),
+    forex: settled(forexResults),
+    stockProvider: config.twelveDataApiKey ? "Twelve Data" : "Yahoo Finance",
     cryptoProvider: "Binance",
-    indianStockProvider: "Yahoo Finance fallback",
-    forexProvider: "Yahoo Finance fallback"
+    indianStockProvider: "Yahoo Finance",
+    forexProvider: "Yahoo Finance"
   };
 }
 
@@ -234,23 +241,38 @@ export async function fetchYahooCandles(symbol: string, range = "1mo", interval 
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${encodeURIComponent(
     range
   )}&interval=${encodeURIComponent(interval)}&includePrePost=false`;
-  const response = await fetch(url);
+
+  const response = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; ScalpVision/1.0; +https://scalpvision.io)" }
+  });
+
   if (!response.ok) {
-    throw new Error(`Yahoo Finance candles failed: ${response.status}`);
+    throw new Error(`Yahoo Finance candles failed: ${response.status} for ${symbol}`);
   }
 
   const payload = (await response.json()) as {
     chart?: {
       result?: Array<{
         timestamp?: number[];
-        indicators?: { quote?: Array<{ open?: number[]; high?: number[]; low?: number[]; close?: number[] }> };
+        indicators?: {
+          quote?: Array<{
+            open?: (number | null)[];
+            high?: (number | null)[];
+            low?: (number | null)[];
+            close?: (number | null)[];
+          }>;
+        };
       }>;
     };
   };
 
   const result = payload.chart?.result?.[0];
-  const times = result?.timestamp ?? [];
-  const quote = result?.indicators?.quote?.[0];
+  if (!result) {
+    throw new Error(`No chart result returned for ${symbol}`);
+  }
+
+  const times = result.timestamp ?? [];
+  const quote = result.indicators?.quote?.[0];
   if (!quote || !quote.open || !quote.high || !quote.low || !quote.close) {
     throw new Error("No candle data available");
   }

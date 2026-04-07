@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import { config } from "../config.js";
 
 type AnalysisRequest = {
@@ -29,23 +28,10 @@ function safeNum(val: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function imageToInlineData(url: string): { data: string; mimeType: string } {
-  if (url.startsWith("data:")) {
-    const [header, data] = url.split(",");
-    const mimeType = header.replace("data:", "").replace(";base64", "");
-    return { data, mimeType };
-  }
-  throw new Error("Only data: URIs are supported for inline image data.");
-}
-
 export async function analyzeChart(request: AnalysisRequest): Promise<AnalysisResult> {
-  if (!config.geminiApiKey) {
-    throw new Error("GEMINI_API_KEY is not configured on the server.");
+  if (!config.openRouterApiKey) {
+    throw new Error("OPENROUTER_API_KEY is not configured on the server.");
   }
-
-  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
-
-  const { data, mimeType } = imageToInlineData(request.imageUrl);
 
   const prompt = `You are an expert trading analyst specializing in scalping and intraday chart analysis.
 
@@ -74,24 +60,46 @@ Rules:
 - confidence should reflect how clear the setup is (realistic range 50-95)
 - summary must mention the pattern, key levels, and why this entry is valid`;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: [
-      {
-        parts: [
-          { inlineData: { data, mimeType } },
-          { text: prompt }
-        ]
-      }
-    ]
+  // Note: gpt-3.5-turbo does not support vision. 
+  // To use vision, switch model to "openai/gpt-4o-mini" and uncomment the image_url part below.
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${config.openRouterApiKey}`,
+      "HTTP-Referer": config.frontendUrl,
+      "X-Title": "ChartSniper AI",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "openai/gpt-3.5-turbo",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt }
+            // { type: "image_url", image_url: { url: request.imageUrl } } 
+          ]
+        }
+      ],
+      response_format: { type: "json_object" }
+    })
   });
 
-  const text = (response.text ?? "").trim();
-  const jsonText = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`OpenRouter API error: ${response.statusText} ${JSON.stringify(errorData)}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new Error("AI returned empty response. Please try again.");
+  }
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(jsonText) as Record<string, unknown>;
+    parsed = JSON.parse(content) as Record<string, unknown>;
   } catch {
     throw new Error("AI returned non-JSON response. Please try again.");
   }
