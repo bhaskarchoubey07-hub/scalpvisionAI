@@ -9,10 +9,10 @@ services:
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
-        value: 20
+        value: "20"
       - key: FRONTEND_URL
         sync: false
-      - key: AI_SERVICE_URL
+      - key: ALLOWED_ORIGINS
         sync: false
       - key: DATABASE_URL
         sync: false
@@ -20,19 +20,9 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: CLOUD_STORAGE_BUCKET
-        value: scalpvision-screenshots
+      - key: GROQ_API_KEY
+        sync: false
       - key: TWELVE_DATA_API_KEY
         sync: false
-
-  - type: web
-    name: scalpvision-ai
-    runtime: python
-    rootDir: ai-service
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    plan: free
-    healthCheckPath: /health
-    envVars:
-      - key: MODEL_DEVICE
-        value: cpu
+      - key: AI_SERVICE_URL
+        sync: false

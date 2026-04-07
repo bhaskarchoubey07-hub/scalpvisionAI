@@ -130,7 +130,7 @@ export function ForecastChart({ points, trend, candles }: Props) {
       const lastPrice = historicalPts[historicalPts.length - 1].price;
       const markerLine = chart.addLineSeries({
         color: "transparent",
-        lineWidth: 0,
+        lineWidth: 1,
         priceLineVisible: true,
         priceLineColor: "rgba(6,182,212,0.6)",
         priceLineStyle: 1,
