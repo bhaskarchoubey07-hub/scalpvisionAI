@@ -1,0 +1,97 @@
+﻿{
+    "direction":  "short",
+    "signal":  "HOLD",
+    "market":  "indian-stock",
+    "symbol":  "RELIANCE.NS",
+    "entry_price":  1340.6,
+    "stop_loss":  1345.18,
+    "take_profit":  1318.47,
+    "risk_reward":  4.84,
+    "confidence":  43,
+    "summary":  "Technical analysis identifies a bearish setup for RELIANCE at ₹1340.60 with 43% confidence. 2/3 timeframes confirm the bearish bias. Key factors: RSI at 56.7, MACD showing Bullish, and Above EMA21 pattern. Entry at ₹1340.60, stop-loss at ₹1345.18 (ATR-based), target ₹1318.47 for a 4.8:1 risk-reward ratio. Strong trending conditions support this setup.",
+    "pattern":  "Bullish Trend",
+    "rsi":  56.69,
+    "macd":  "Bullish",
+    "timeframe":  "1h",
+    "trend":  "uptrend",
+    "atr":  11.06,
+    "volatility_percent":  0.83,
+    "current_price":  1340.6,
+    "indicators":  [
+                       {
+                           "name":  "RSI (14)",
+                           "value":  "56.7",
+                           "bias":  "neutral",
+                           "weight":  15,
+                           "score":  0
+                       },
+                       {
+                           "name":  "MACD",
+                           "value":  "Bullish",
+                           "bias":  "bullish",
+                           "weight":  20,
+                           "score":  8
+                       },
+                       {
+                           "name":  "EMA Ribbon",
+                           "value":  "Above EMA21",
+                           "bias":  "bullish",
+                           "weight":  15,
+                           "score":  8
+                       },
+                       {
+                           "name":  "Bollinger Bands",
+                           "value":  "Above Middle Band",
+                           "bias":  "bullish",
+                           "weight":  10,
+                           "score":  3
+                       },
+                       {
+                           "name":  "ADX (14)",
+                           "value":  "Strong Trend (ADX 31)",
+                           "bias":  "bullish",
+                           "weight":  10,
+                           "score":  10
+                       },
+                       {
+                           "name":  "Stochastic RSI",
+                           "value":  "K:90.9 D:94.9",
+                           "bias":  "bearish",
+                           "weight":  10,
+                           "score":  6
+                       }
+                   ],
+    "supports":  [
+                     1339.8,
+                     1338.57,
+                     1336.53,
+                     1335.5
+                 ],
+    "resistances":  [
+                        1344.07,
+                        1347.53,
+                        1348.7,
+                        1349.57
+                    ],
+    "pivot_point":  1342.03,
+    "timeframe_analysis":  [
+                               {
+                                   "timeframe":  "1h",
+                                   "direction":  "long",
+                                   "confidence":  44,
+                                   "net_score":  29
+                               },
+                               {
+                                   "timeframe":  "4h",
+                                   "direction":  "short",
+                                   "confidence":  48,
+                                   "net_score":  -32
+                               },
+                               {
+                                   "timeframe":  "1d",
+                                   "direction":  "short",
+                                   "confidence":  48,
+                                   "net_score":  -32
+                               }
+                           ]
+}

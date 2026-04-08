@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, BrainCircuit, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, BrainCircuit, ShieldCheck, Zap, Sparkles } from "lucide-react";
 
 const features = [
   {
@@ -41,6 +41,10 @@ export default function HomePage() {
             <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm text-white">
               Explore Platform
               <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="/pro" className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 border border-indigo-500/30 px-6 py-3 text-sm text-indigo-400 font-bold shadow-glow hover:bg-indigo-500/20 transition-all">
+              Try Pro AI
+              <Sparkles className="h-4 w-4" />
             </Link>
             <Link href="/signup" className="rounded-full border border-white/10 px-6 py-3 text-sm text-white">
               Create Account
