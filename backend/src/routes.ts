@@ -7,6 +7,8 @@ import { pool } from "./db.js";
 import { requireAuth } from "./middleware/auth.js";
 import { fetchMarketOverview, fetchMarketQuote, fetchYahooCandles } from "./services/marketData.js";
 import { createAuthToken, createUser, verifyUser } from "./services/auth.js";
+import { runBacktest } from "./services/backtesting.js";
+
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -228,6 +230,16 @@ export function createRouter() {
     return response.json(rows);
   }));
 
+  router.get("/signals/:id", asyncHandler(async (request, response) => {
+    const { rows } = await pool.query(
+      "SELECT * FROM signals WHERE id = $1",
+      [request.params.id]
+    );
+    if (!rows.length) return response.status(404).json({ error: "Signal not found" });
+    return response.json(rows[0]);
+  }));
+
+
   router.get("/watchlist", requireAuth, asyncHandler(async (_request, response) => {
     const { rows } = await pool.query(
       "SELECT id, symbol, market, notes, created_at FROM watchlists WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50",
@@ -348,22 +360,15 @@ export function createRouter() {
       range: z.string(),
       initial_capital: z.number().default(10000)
     });
-    const { strategy, range } = schema.parse(request.body);
+    const { strategy, range, initial_capital } = schema.parse(request.body);
     
-    // Simple simulation logic for "fully operational" demo
-    const trades = 50 + Math.floor(Math.random() * 50);
-    const winRate = 0.55 + Math.random() * 0.15;
-    const netProfit = (trades * 100 * winRate) - (trades * 80 * (1 - winRate));
+    // Default to a sane ticker if we don't have one in context (usually backtests are on a specific symbol)
+    // For now, let's use RELIANCE.NS as default for the simulation
+    const symbol = "RELIANCE.NS"; 
     
-    return response.json({
-      net_profit: +netProfit.toFixed(2),
-      max_drawdown: -(2 + Math.random() * 5).toFixed(1),
-      sharpe_ratio: (1.5 + Math.random() * 2).toFixed(2),
-      total_trades: trades,
-      win_rate: +(winRate * 100).toFixed(1),
-      strategy_used: strategy,
-      range_simulated: range
-    });
+    const result = await runBacktest(symbol, range, initial_capital);
+    return response.json(result);
+
   }));
 
   router.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {

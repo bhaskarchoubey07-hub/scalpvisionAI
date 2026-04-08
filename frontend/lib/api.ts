@@ -393,3 +393,26 @@ export async function runBacktest(strategy: string, range: string): Promise<Back
   if (!response.ok) throw new Error("Backtesting failed");
   return response.json();
 }
+
+export async function fetchSignalById(id: string): Promise<AnalysisResult> {
+  const response = await fetch(`${apiBaseUrl}/signals/${id}`, {
+    cache: "no-store"
+  });
+  if (!response.ok) throw new Error("Signal not found");
+  return response.json();
+}
+
+export type LeaderboardEntry = {
+  name: string;
+  score: number;
+  win_rate: string;
+  total_trades: number;
+};
+
+export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
+  const response = await fetch(`${apiBaseUrl}/leaderboard`, {
+    cache: "no-store"
+  });
+  if (!response.ok) throw new Error("Failed to load leaderboard");
+  return response.json();
+}
