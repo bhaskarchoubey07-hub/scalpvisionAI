@@ -59,3 +59,18 @@ class ForecastResponse(BaseModel):
     narrative: str
     confidence_score: float
     trend: Literal["bullish", "bearish", "neutral"]
+
+class ExplainRequest(BaseModel):
+    symbol: str
+    market: str
+    direction: str
+    confidence: float
+    trend: str
+    entry_price: float
+    stop_loss: float
+    take_profit: float
+    risk_reward: float
+    indicators: List[dict]
+
+class ExplainResponse(BaseModel):
+    explanation: str

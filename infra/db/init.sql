@@ -25,16 +25,36 @@ CREATE TABLE IF NOT EXISTS uploaded_charts (
 CREATE TABLE IF NOT EXISTS signals (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   chart_id UUID REFERENCES uploaded_charts(id) ON DELETE CASCADE,
+  asset_symbol TEXT,
   market TEXT NOT NULL,
+  timeframe TEXT,
   direction TEXT NOT NULL,
   entry_price NUMERIC(18,8) NOT NULL,
   stop_loss NUMERIC(18,8) NOT NULL,
   take_profit NUMERIC(18,8) NOT NULL,
   risk_reward NUMERIC(10,4) NOT NULL,
   confidence NUMERIC(5,2) NOT NULL,
+  conviction_factors JSONB,
   summary TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS trade_journal (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  asset_symbol TEXT NOT NULL,
+  market TEXT NOT NULL,
+  direction TEXT NOT NULL,
+  pnl NUMERIC(18,8),
+  outcome TEXT,
+  notes TEXT,
+  tags TEXT[],
+  trade_date TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_journal_user ON trade_journal(user_id);
+CREATE INDEX IF NOT EXISTS idx_signals_symbol ON signals(asset_symbol);
 
 CREATE TABLE IF NOT EXISTS watchlists (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

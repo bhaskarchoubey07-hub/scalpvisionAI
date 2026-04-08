@@ -1,6 +1,11 @@
 from fastapi import FastAPI
 
-from .schemas import AnalyzeRequest, AnalyzeResponse, AdvisorRequest, AdvisorResponse, ForecastRequest, ForecastResponse
+from .schemas import (
+    AnalyzeRequest, AnalyzeResponse, 
+    AdvisorRequest, AdvisorResponse, 
+    ForecastRequest, ForecastResponse,
+    ExplainRequest, ExplainResponse
+)
 from .services.pipeline import run_analysis_pipeline
 from .services.ai_explainer import ai_explainer
 from .services.forecast_engine import forecast_engine
@@ -31,3 +36,9 @@ def get_advice(payload: AdvisorRequest):
 @app.post("/forecast", response_model=ForecastResponse)
 def get_5y_forecast(payload: ForecastRequest):
     return forecast_engine.generate_5y_forecast(payload)
+
+
+@app.post("/explain", response_model=ExplainResponse)
+def explain_trade(payload: ExplainRequest):
+    explanation = ai_explainer.explain_trade(payload.dict())
+    return ExplainResponse(explanation=explanation)

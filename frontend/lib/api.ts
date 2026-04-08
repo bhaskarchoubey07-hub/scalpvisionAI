@@ -321,3 +321,75 @@ export async function addPortfolioHolding(token: string, portfolioId: string, ho
   });
   return response.json();
 }
+
+/* ─────────────── PRO Features ─────────────── */
+
+export type ProSignal = {
+  id: string;
+  asset_symbol: string;
+  market: string;
+  timeframe: string;
+  direction: string;
+  entry_price: number;
+  take_profit: number;
+  confidence: number;
+  status: string;
+};
+
+export type JournalEntry = {
+  id: string;
+  asset_symbol: string;
+  market: string;
+  direction: string;
+  pnl: number;
+  outcome: string;
+  notes: string;
+  tags: string[];
+  trade_date: string;
+};
+
+export type BacktestResult = {
+  net_profit: number;
+  max_drawdown: string;
+  sharpe_ratio: string;
+  total_trades: number;
+  win_rate: number;
+  strategy_used: string;
+  range_simulated: string;
+};
+
+export async function fetchProSignals(): Promise<ProSignal[]> {
+  const response = await fetch(`${apiBaseUrl}/pro/signals`);
+  if (!response.ok) throw new Error("Failed to load Pro signals");
+  return response.json();
+}
+
+export async function fetchJournalEntries(token: string): Promise<JournalEntry[]> {
+  const response = await fetch(`${apiBaseUrl}/pro/journal`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error("Failed to load journal entries");
+  return response.json();
+}
+
+export async function addJournalEntry(token: string, entry: Partial<JournalEntry>) {
+  const response = await fetch(`${apiBaseUrl}/pro/journal`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json", 
+      Authorization: `Bearer ${token}` 
+    },
+    body: JSON.stringify(entry)
+  });
+  return response.json();
+}
+
+export async function runBacktest(strategy: string, range: string): Promise<BacktestResult> {
+  const response = await fetch(`${apiBaseUrl}/pro/backtest/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ strategy, range })
+  });
+  if (!response.ok) throw new Error("Backtesting failed");
+  return response.json();
+}
