@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "updatedAt": "2026-04-08T07:27:27.704Z",
+  "markets": {
+    "indian-stock": {
+      "RSI (14)": -4,
+      "MACD": 4,
+      "EMA Ribbon": 3,
+      "Bollinger Bands": 4,
+      "ADX (14)": -1,
+      "Stochastic RSI": 2
+    }
+  }
+}

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { SectionHeader } from "@/components/section-header";
 import { UploadDropzone } from "@/components/upload-dropzone";
-import { uploadChart, analyzeChart, type AnalysisResult } from "@/lib/api";
-import { CheckCircle2, Loader2, AlertCircle, ShieldCheck, Zap } from "lucide-react";
+import { uploadChart, analyzeChart, analyzeTicker, fetchIndianStocksSearch, type AnalysisResult, type IndianStock } from "@/lib/api";
+import { CheckCircle2, Loader2, AlertCircle, ShieldCheck, Zap, Search, TrendingUp, BarChart3 } from "lucide-react";
 import clsx from "clsx";
 
 type Step = {
@@ -14,18 +14,50 @@ type Step = {
   status: "pending" | "loading" | "done" | "error";
 };
 
-const INITIAL_STEPS: Step[] = [
+type AnalysisMode = "ticker" | "image";
+
+const TICKER_STEPS: Step[] = [
+  { label: "Security validation & rate protection", status: "pending" },
+  { label: "Fetching real-time market data (Yahoo Finance)", status: "pending" },
+  { label: "Multi-indicator technical analysis (9 indicators)", status: "pending" },
+  { label: "Multi-timeframe confluence (1h / 4h / 1d)", status: "pending" },
+  { label: "ATR-based signal generation", status: "pending" },
+];
+
+const IMAGE_STEPS: Step[] = [
   { label: "Security validation & rate protection", status: "pending" },
   { label: "Optimized cloud storage upload", status: "pending" },
   { label: "Computer Vision pattern detection", status: "pending" },
   { label: "AI neural engine signal generation", status: "pending" },
 ];
 
+const MARKET_OPTIONS = [
+  { value: "indian-stock", label: "NSE/BSE" },
+  { value: "stock", label: "US Stocks" },
+  { value: "crypto", label: "Crypto" },
+  { value: "forex", label: "Forex" },
+] as const;
+
+const QUICK_TICKERS = [
+  { symbol: "RELIANCE.NS", label: "Reliance", market: "indian-stock" as const },
+  { symbol: "TCS.NS", label: "TCS", market: "indian-stock" as const },
+  { symbol: "HDFCBANK.NS", label: "HDFC Bank", market: "indian-stock" as const },
+  { symbol: "INFY.NS", label: "Infosys", market: "indian-stock" as const },
+  { symbol: "SBIN.NS", label: "SBI", market: "indian-stock" as const },
+  { symbol: "AAPL", label: "Apple", market: "stock" as const },
+];
+
 export default function UploadPage() {
   const router = useRouter();
-  const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
+  const [mode, setMode] = useState<AnalysisMode>("ticker");
+  const [steps, setSteps] = useState<Step[]>(TICKER_STEPS);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [ticker, setTicker] = useState("");
+  const [market, setMarket] = useState<"stock" | "crypto" | "indian-stock" | "forex">("indian-stock");
+  const [searchResults, setSearchResults] = useState<IndianStock[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const setStep = (index: number, status: Step["status"]) => {
     setSteps((prev) =>
@@ -33,11 +65,95 @@ export default function UploadPage() {
     );
   };
 
-  const handleSelect = async (file: File) => {
+  // Search Indian stocks as user types
+  useEffect(() => {
+    if (ticker.length < 2 || market !== "indian-stock") {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const results = await fetchIndianStocksSearch(ticker);
+        setSearchResults(results);
+        setShowSearch(true);
+      } catch {
+        setSearchResults([]);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [ticker, market]);
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSearch(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleTickerAnalysis = useCallback(async (sym?: string, mkt?: typeof market) => {
+    const analysisSymbol = sym || ticker;
+    const analysisMarket = mkt || market;
+    
+    if (!analysisSymbol.trim()) return;
     if (isRunning) return;
+    
     setIsRunning(true);
     setError(null);
-    setSteps(INITIAL_STEPS);
+    setSteps(TICKER_STEPS);
+    setShowSearch(false);
+
+    try {
+      // Step 1: Validation
+      setStep(0, "loading");
+      await new Promise((r) => setTimeout(r, 400));
+      setStep(0, "done");
+
+      // Step 2: Fetching data
+      setStep(1, "loading");
+
+      // Step 3-5 happen inside analyzeTicker
+      const result: AnalysisResult = await analyzeTicker(analysisSymbol, analysisMarket);
+      setStep(1, "done");
+
+      setStep(2, "loading");
+      await new Promise((r) => setTimeout(r, 600));
+      setStep(2, "done");
+
+      setStep(3, "loading");
+      await new Promise((r) => setTimeout(r, 500));
+      setStep(3, "done");
+
+      setStep(4, "loading");
+      await new Promise((r) => setTimeout(r, 300));
+      setStep(4, "done");
+
+      sessionStorage.setItem("latestSignal", JSON.stringify(result));
+      await new Promise((r) => setTimeout(r, 400));
+      router.push("/signals/result");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unexpected error";
+      setError(msg);
+      setSteps((prev) => prev.map((s) => (s.status === "loading" ? { ...s, status: "error" } : s)));
+    } finally {
+      setIsRunning(false);
+    }
+  }, [ticker, market, isRunning, router]);
+
+  const handleImageAnalysis = async (file: File) => {
+    if (isRunning) return;
+    
+    if (!ticker.trim()) {
+      setError("Please enter a ticker symbol first, then upload a chart image.");
+      return;
+    }
+
+    setIsRunning(true);
+    setError(null);
+    setSteps(IMAGE_STEPS);
 
     try {
       setStep(0, "loading");
@@ -55,7 +171,7 @@ export default function UploadPage() {
       setStep(2, "done");
 
       setStep(3, "loading");
-      const result: AnalysisResult = await analyzeChart(imageUrl, "stock");
+      const result: AnalysisResult = await analyzeChart(imageUrl, market, ticker);
       setStep(3, "done");
 
       sessionStorage.setItem("latestSignal", JSON.stringify({ ...result, imageUrl }));
@@ -80,18 +196,167 @@ export default function UploadPage() {
     >
       <SectionHeader
         eyebrow="Intelligence Intake"
-        title="Upload market screenshot"
-        description="Our neural pipeline processes your chart to extract trends, levels, and high-probability trade setups."
+        title="Real-time market analysis"
+        description="Enter a ticker symbol for instant multi-indicator analysis using live market data, or upload a chart screenshot for visual pattern detection."
       />
 
       <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] mt-10">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
+          className="space-y-6"
         >
-          <UploadDropzone onSelect={handleSelect} disabled={isRunning} />
-          
-          <div className="mt-8 flex items-center justify-center gap-6 text-slate-500">
+          {/* Mode Toggle */}
+          <div className="flex items-center gap-2 rounded-2xl bg-white/[0.03] border border-white/[0.08] p-1.5">
+            <button
+              onClick={() => { setMode("ticker"); setSteps(TICKER_STEPS); setError(null); }}
+              className={clsx(
+                "flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold uppercase tracking-widest transition-all",
+                mode === "ticker"
+                  ? "bg-accent/15 text-accent border border-accent/30 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+                  : "text-slate-500 hover:text-white"
+              )}
+            >
+              <BarChart3 className="h-4 w-4" /> Ticker Analysis
+            </button>
+            <button
+              onClick={() => { setMode("image"); setSteps(IMAGE_STEPS); setError(null); }}
+              className={clsx(
+                "flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold uppercase tracking-widest transition-all",
+                mode === "image"
+                  ? "bg-accent/15 text-accent border border-accent/30 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+                  : "text-slate-500 hover:text-white"
+              )}
+            >
+              <Search className="h-4 w-4" /> Chart Upload
+            </button>
+          </div>
+
+          {/* Ticker Input Section — Always visible */}
+          <div className="glass rounded-[2rem] p-6 space-y-5">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              <TrendingUp className="h-3.5 w-3.5 text-accent" />
+              Enter Ticker Symbol
+            </div>
+
+            {/* Market Selector */}
+            <div className="flex gap-2 flex-wrap">
+              {MARKET_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setMarket(opt.value as typeof market)}
+                  disabled={isRunning}
+                  className={clsx(
+                    "rounded-xl px-4 py-2 text-xs font-bold transition-all border",
+                    market === opt.value
+                      ? "bg-accent/15 text-accent border-accent/30"
+                      : "bg-white/[0.03] text-slate-400 border-white/[0.08] hover:border-white/20 hover:text-white"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Ticker Input */}
+            <div className="relative" ref={searchRef}>
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <input
+                    type="text"
+                    value={ticker}
+                    onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleTickerAnalysis();
+                    }}
+                    placeholder={
+                      market === "indian-stock" ? "RELIANCE.NS, TCS.NS, INFY.NS..." :
+                      market === "crypto" ? "BTCUSDT, ETHUSDT, SOLUSDT..." :
+                      market === "forex" ? "EURUSD=X, USDINR=X..." :
+                      "AAPL, NVDA, TSLA, MSFT..."
+                    }
+                    disabled={isRunning}
+                    className="w-full rounded-xl border border-white/[0.1] bg-white/[0.03] py-3.5 pl-11 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-accent/50 focus:ring-1 focus:ring-accent/20 disabled:opacity-50"
+                  />
+                </div>
+                {mode === "ticker" && (
+                  <button
+                    onClick={() => handleTickerAnalysis()}
+                    disabled={isRunning || !ticker.trim()}
+                    className={clsx(
+                      "rounded-xl px-6 py-3.5 text-sm font-black tracking-widest transition-all",
+                      isRunning || !ticker.trim()
+                        ? "bg-white/5 text-slate-600 cursor-not-allowed"
+                        : "bg-accent text-black shadow-glow hover:scale-[1.02] hover:brightness-110 active:scale-95"
+                    )}
+                  >
+                    {isRunning ? <Loader2 className="h-5 w-5 animate-spin" /> : "ANALYZE"}
+                  </button>
+                )}
+              </div>
+
+              {/* Search Results Dropdown */}
+              <AnimatePresence>
+                {showSearch && searchResults.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="absolute z-50 mt-2 w-full rounded-xl border border-white/10 bg-[#0d1117] shadow-2xl overflow-hidden"
+                  >
+                    {searchResults.slice(0, 6).map((stock) => (
+                      <button
+                        key={stock.yahoo_symbol}
+                        onClick={() => {
+                          setTicker(stock.yahoo_symbol);
+                          setShowSearch(false);
+                          if (mode === "ticker") {
+                            handleTickerAnalysis(stock.yahoo_symbol, "indian-stock");
+                          }
+                        }}
+                        className="flex w-full items-center justify-between px-4 py-3 text-left transition-all hover:bg-white/5 border-b border-white/[0.04] last:border-b-0"
+                      >
+                        <div>
+                          <div className="text-sm font-bold text-white">{stock.yahoo_symbol}</div>
+                          <div className="text-xs text-slate-400">{stock.company_name}</div>
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-500">{stock.exchange}</div>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Quick Pick Buttons */}
+            <div className="flex gap-2 flex-wrap">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600 self-center mr-1">Quick:</span>
+              {QUICK_TICKERS.map((qt) => (
+                <button
+                  key={qt.symbol}
+                  onClick={() => {
+                    setTicker(qt.symbol);
+                    setMarket(qt.market);
+                    if (mode === "ticker") handleTickerAnalysis(qt.symbol, qt.market);
+                  }}
+                  disabled={isRunning}
+                  className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-[10px] font-bold text-slate-400 transition-all hover:border-accent/30 hover:text-accent disabled:opacity-40"
+                >
+                  {qt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Image Upload (shown in image mode) */}
+          {mode === "image" && (
+            <div>
+              <UploadDropzone onSelect={handleImageAnalysis} disabled={isRunning} />
+            </div>
+          )}
+
+          <div className="flex items-center justify-center gap-6 text-slate-500">
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
               <ShieldCheck className="h-3.5 w-3.5 text-accent" /> Secure Processing
             </div>
@@ -114,7 +379,7 @@ export default function UploadPage() {
             <AnimatePresence mode="popLayout">
               {steps.map((step, i) => (
                 <motion.div
-                  key={i}
+                  key={`${mode}-${i}`}
                   layout
                   className={clsx(
                     "flex items-center gap-4 rounded-2xl border p-4 transition-all duration-500",

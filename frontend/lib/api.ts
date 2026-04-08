@@ -110,8 +110,33 @@ export async function fetchCandles(symbol: string, range = "3mo", interval = "1d
   return payload.candles as Candle[];
 }
 
+/* ─────────────── Analysis Types ─────────────── */
+
+export type IndicatorDetail = {
+  name: string;
+  value: string;
+  bias: "bullish" | "bearish" | "neutral";
+  weight: number;
+  score: number;
+};
+
+export type TimeframeDetail = {
+  timeframe: string;
+  direction: string;
+  confidence: number;
+  net_score: number;
+};
+
+export type PatternDetail = {
+  name: string;
+  type: "bullish" | "bearish";
+  strength: number;
+  description: string;
+};
+
 export type AnalysisResult = {
   direction: string;
+  signal: string;
   market: string;
   symbol?: string;
   entry_price?: number | null;
@@ -124,7 +149,19 @@ export type AnalysisResult = {
   rsi?: number | null;
   macd?: string | null;
   timeframe?: string | null;
+  trend?: string;
+  atr?: number;
+  volatility_percent?: number;
+  current_price?: number;
+  indicators?: IndicatorDetail[];
+  supports?: number[];
+  resistances?: number[];
+  pivot_point?: number;
+  timeframe_analysis?: TimeframeDetail[];
+  patterns?: PatternDetail[];
 };
+
+/* ─────────────── Upload & Analyze ─────────────── */
 
 export async function uploadChart(file: File): Promise<{ imageUrl: string }> {
   const form = new FormData();
@@ -158,6 +195,28 @@ export async function analyzeChart(
   return response.json();
 }
 
+/**
+ * Analyze a ticker symbol using real-time data — no image needed.
+ * This is the primary analysis mode using the multi-indicator TA engine.
+ */
+export async function analyzeTicker(
+  symbol: string,
+  market: "stock" | "crypto" | "indian-stock" | "forex" = "indian-stock"
+): Promise<AnalysisResult> {
+  const response = await fetch(`${apiBaseUrl}/analyze-ticker`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ symbol, market })
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error((payload as { error?: string }).error ?? "Ticker analysis failed");
+  }
+  return response.json();
+}
+
+/* ─────────────── Indian Stocks ─────────────── */
+
 export type IndianStock = {
   symbol: string;
   yahoo_symbol: string;
@@ -178,6 +237,8 @@ export async function fetchPopularIndianStocks(): Promise<IndianStock[]> {
   if (!response.ok) throw new Error("Failed to load popular stocks");
   return response.json();
 }
+
+/* ─────────────── Forecast ─────────────── */
 
 export type ForecastPoint = {
   date: string;
@@ -200,10 +261,12 @@ export async function fetchForecast(symbol: string, market: string): Promise<For
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.error ?? "Forecasting failed");
+    throw new Error((payload as { error?: string }).error ?? "Forecasting failed");
   }
   return response.json();
 }
+
+/* ─────────────── Portfolios ─────────────── */
 
 export type PortfolioHolding = {
   id: string;

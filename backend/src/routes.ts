@@ -2,12 +2,11 @@ import { NextFunction, Request, Response, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { uploadChartBuffer } from "./services/storage.js";
-import { analyzeChart } from "./services/ai.js";
+import { analyzeChart, analyzeTicker } from "./services/ai.js";
 import { pool } from "./db.js";
 import { requireAuth } from "./middleware/auth.js";
 import { fetchMarketOverview, fetchMarketQuote, fetchYahooCandles } from "./services/marketData.js";
 import { createAuthToken, createUser, verifyUser } from "./services/auth.js";
-import { RSI, MACD } from "technicalindicators";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -20,13 +19,6 @@ const upload = multer({
     }
     callback(null, true);
   }
-});
-
-const analyzeSchema = z.object({
-  imageUrl: z.string().url(),
-  market: z.enum(["stock", "crypto"]),
-  symbol: z.string().optional(),
-  timeframe: z.string().optional()
 });
 
 const supportedMarketSchema = z.enum(["stock", "crypto", "indian-stock", "forex"]);
@@ -168,7 +160,7 @@ export function createRouter() {
     return response.json({ symbol: query.symbol, candles });
   }));
 
-  // Upload chart — returns a data URL (base64) so Gemini can read the image directly
+  // Upload chart — returns a data URL (base64) so AI can read the image directly
   router.post("/upload-chart", upload.single("chart"), asyncHandler(async (request, response) => {
     if (!request.file) {
       return response.status(400).json({ error: "Chart image is required" });
@@ -179,64 +171,54 @@ export function createRouter() {
     return response.json({ success: true, imageUrl, fileName: request.file.originalname });
   }));
 
-  // Analyze chart — accepts imageUrl (may be a data: URI or https:// URL)
+  // ─── Analyze chart — image + optional ticker ───
+  // Now self-contained: runs entirely in Node.js, no Python dependency
   router.post("/analyze-chart", asyncHandler(async (request, response) => {
     const schema = z.object({
-      imageUrl: z.string().min(1),
+      imageUrl: z.string().min(1).optional(),
       market: z.enum(["stock", "crypto", "indian-stock", "forex"]).default("stock"),
       symbol: z.string().optional(),
       timeframe: z.string().optional()
     });
     const payload = schema.parse(request.body);
-    
-    let currentPrice: number | undefined;
-    let rsiValue: number | undefined;
-    let macdBias: string | undefined;
 
-    if (payload.symbol) {
-      try {
-        const [quote, candles] = await Promise.all([
-          fetchMarketQuote(payload.market, payload.symbol),
-          fetchYahooCandles(payload.symbol, "5d", payload.timeframe || "1h")
-        ]);
-
-        currentPrice = quote.price;
-
-        if (candles.length > 14) {
-          const closes = candles.map(c => c.close);
-          
-          // Calculate RSI
-          const rsiInput = { values: closes, period: 14 };
-          const rsiResults = RSI.calculate(rsiInput);
-          rsiValue = rsiResults[rsiResults.length - 1];
-
-          // Calculate MACD
-          const macdInput = {
-            values: closes,
-            fastPeriod: 12,
-            slowPeriod: 26,
-            signalPeriod: 9,
-            SimpleMAOscillator: false,
-            SimpleMASignal: false
-          };
-          const macdResults = MACD.calculate(macdInput);
-          const lastMacd = macdResults[macdResults.length - 1];
-          if (lastMacd) {
-            macdBias = lastMacd.MACD! > lastMacd.signal! ? "bullish" : "bearish";
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching market data for analysis:", err);
-      }
+    if (!payload.symbol) {
+      return response.status(400).json({
+        error: "Symbol is required for analysis. Please enter a ticker symbol (e.g., RELIANCE.NS, AAPL, BTCUSDT)."
+      });
     }
 
-    const result = await analyzeChart({
-      ...payload,
-      current_price: currentPrice,
-      rsi: rsiValue,
-      macd_bias: macdBias
+    try {
+      const result = await analyzeChart({
+        imageUrl: payload.imageUrl,
+        market: payload.market,
+        symbol: payload.symbol,
+        timeframe: payload.timeframe,
+      });
+      return response.json(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Analysis failed";
+      console.error("Analysis error:", message);
+      return response.status(500).json({ error: message });
+    }
+  }));
+
+  // ─── NEW: Ticker-only analysis (no image needed) ───
+  router.post("/analyze-ticker", asyncHandler(async (request, response) => {
+    const schema = z.object({
+      symbol: z.string().min(1),
+      market: z.enum(["stock", "crypto", "indian-stock", "forex"]).default("indian-stock"),
     });
-    return response.json(result);
+    const { symbol, market } = schema.parse(request.body);
+
+    try {
+      const result = await analyzeTicker(symbol, market);
+      return response.json(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Analysis failed";
+      console.error("Ticker analysis error:", message);
+      return response.status(500).json({ error: message });
+    }
   }));
 
   router.get("/signals", asyncHandler(async (_request, response) => {
@@ -354,7 +336,6 @@ export function createRouter() {
       [response.locals.user.sub]
     );
     
-    // For each portfolio, fetch its holdings
     const portfolios = await Promise.all(rows.map(async (p) => {
       const { rows: holdings } = await pool.query(
         "SELECT id, symbol, market, quantity, avg_buy_price, added_at FROM portfolio_holdings WHERE portfolio_id = $1",
@@ -411,46 +392,40 @@ export function createRouter() {
     });
     const { symbol, market } = schema.parse(request.body);
     
-    // 1. Fetch 5 years of historical weekly candles from Yahoo
     const candles = await fetchYahooCandles(symbol, "5y", "1wk");
     
     if (candles.length < 20) {
       return response.status(400).json({ error: "Insufficient historical data for forecasting." });
     }
 
-    // 2. Build historical points
     const historical: { date: string; price: number; days: number }[] = candles.map((c, i) => ({
       date: new Date(c.time * 1000).toISOString().split('T')[0],
       price: c.close,
       days: i
     }));
 
-    // 3. Polynomial regression (degree 3) — Least Squares in pure JS
     const x = historical.map(h => h.days);
     const y = historical.map(h => h.price);
     const coeffs = polyfit(x, y, 3);
 
-    // 4. Sample historical points (max 100 for performance)
     const step = Math.max(1, Math.floor(historical.length / 100));
     const points: { date: string; price: number; is_forecast: boolean }[] = [];
     for (let i = 0; i < historical.length; i += step) {
       points.push({ date: historical[i].date, price: historical[i].price, is_forecast: false });
     }
-    // Always include the last point
     const lastH = historical[historical.length - 1];
     if (points[points.length - 1].date !== lastH.date) {
       points.push({ date: lastH.date, price: lastH.price, is_forecast: false });
     }
 
-    // 5. Generate 60 monthly forecast points (5 years)
     const lastDay = x[x.length - 1];
     const lastDate = new Date(lastH.date);
     const floorPrice = Math.min(...y) * 0.2;
     
     for (let m = 1; m <= 60; m++) {
-      const futureDay = lastDay + (m * 30.4); // ~1 month in days
+      const futureDay = lastDay + (m * 30.4);
       let forecastPrice = polyeval(coeffs, futureDay);
-      forecastPrice = Math.max(floorPrice, forecastPrice); // prevent negatives
+      forecastPrice = Math.max(floorPrice, forecastPrice);
       
       const fDate = new Date(lastDate);
       fDate.setMonth(fDate.getMonth() + m);
@@ -462,12 +437,10 @@ export function createRouter() {
       });
     }
 
-    // 6. Determine trend
     const startForecast = y[y.length - 1];
     const endForecast = points[points.length - 1].price;
     const trend = endForecast > startForecast * 1.05 ? "bullish" : endForecast < startForecast * 0.95 ? "bearish" : "neutral";
     
-    // 7. Generate narrative (try AI service, fallback to template)
     let narrative = "";
     try {
       const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
@@ -479,7 +452,7 @@ export function createRouter() {
       });
       if (aiRes.ok) {
         const aiData = await aiRes.json();
-        narrative = aiData.narrative || "";
+        narrative = (aiData as { narrative?: string }).narrative || "";
       }
     } catch { /* AI service not available, use fallback */ }
     
@@ -520,7 +493,6 @@ export function createRouter() {
       }
     }
     
-    // Gaussian elimination
     for (let i = 0; i < size; i++) {
       let maxRow = i;
       for (let k = i + 1; k < size; k++) {
