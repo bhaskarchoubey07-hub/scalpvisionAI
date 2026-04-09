@@ -9,6 +9,11 @@ class AnalyzeRequest(BaseModel):
     current_price: Optional[float] = None
     rsi: Optional[float] = None
     macd_bias: Optional[str] = None
+    # Metadata for Signal Enhancer (Optional)
+    volume: Optional[float] = None
+    avg_volume: Optional[float] = None
+    atr: Optional[float] = None
+    volatility: Optional[float] = None
 
 class IndicatorReading(BaseModel):
     name: str
@@ -29,6 +34,11 @@ class AnalyzeResponse(BaseModel):
     rsi: Optional[float] = None
     macd: Optional[str] = None
     timeframe: Optional[str] = "5m"
+    # Refinement Fields
+    refined_entry: Optional[float] = None
+    entry_zone: Optional[str] = None
+    validity: bool = True
+    refinement_reason: Optional[str] = None
 
 class AdvisorRequest(BaseModel):
     question: str
@@ -74,3 +84,27 @@ class ExplainRequest(BaseModel):
 
 class ExplainResponse(BaseModel):
     explanation: str
+
+class EnhanceRequest(BaseModel):
+    symbol: str
+    market: str
+    direction: Literal["long", "short", "neutral"]
+    entry_price: float
+    stop_loss: float
+    take_profit: float
+    current_price: float
+    timeframe: str = "5m"
+    volume: Optional[float] = None
+    avg_volume: Optional[float] = None
+    atr: Optional[float] = None
+    support_levels: List[float] = []
+    resistance_levels: List[float] = []
+
+class EnhanceResponse(BaseModel):
+    valid: bool
+    confidence_score: float
+    refined_entry: float
+    entry_zone: str
+    stop_loss: float
+    take_profit: float
+    reason: str

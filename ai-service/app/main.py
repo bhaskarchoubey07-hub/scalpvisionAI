@@ -4,11 +4,13 @@ from .schemas import (
     AnalyzeRequest, AnalyzeResponse, 
     AdvisorRequest, AdvisorResponse, 
     ForecastRequest, ForecastResponse,
-    ExplainRequest, ExplainResponse
+    ExplainRequest, ExplainResponse,
+    EnhanceRequest, EnhanceResponse
 )
 from .services.pipeline import run_analysis_pipeline
 from .services.ai_explainer import ai_explainer
 from .services.forecast_engine import forecast_engine
+from .services.signal_enhancer import signal_enhancer
 
 app = FastAPI(title="ScalpVision AI Engine", version="0.1.0")
 
@@ -42,3 +44,39 @@ def get_5y_forecast(payload: ForecastRequest):
 def explain_trade(payload: ExplainRequest):
     explanation = ai_explainer.explain_trade(payload.dict())
     return ExplainResponse(explanation=explanation)
+
+
+@app.post("/enhance-signal", response_model=EnhanceResponse)
+def enhance_signal(payload: EnhanceRequest):
+    # Map request to enhancer format
+    signal_data = {
+        "direction": payload.direction,
+        "entry_price": payload.entry_price,
+        "stop_loss": payload.stop_loss,
+        "take_profit": payload.take_profit,
+        "support": payload.support_levels,
+        "resistance": payload.resistance_levels,
+        "confidence": 50, # Default for manual enhancement
+        "market": payload.market,
+        "symbol": payload.symbol,
+        "timeframe": payload.timeframe
+    }
+    
+    metadata = {
+        "volume": payload.volume,
+        "avg_volume": payload.avg_volume,
+        "atr": payload.atr,
+        "current_price": payload.current_price
+    }
+    
+    enhanced = signal_enhancer.enhance(signal_data, metadata)
+    
+    return EnhanceResponse(
+        valid=enhanced["validity"],
+        confidence_score=float(enhanced["confidence"]),
+        refined_entry=enhanced["refined_entry"],
+        entry_zone=enhanced["entry_zone"],
+        stop_loss=enhanced["stop_loss"],
+        take_profit=enhanced["take_profit"],
+        reason=enhanced["refinement_reason"]
+    )
