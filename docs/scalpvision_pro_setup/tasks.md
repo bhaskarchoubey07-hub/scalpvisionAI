@@ -1,0 +1,3 @@
+- [ ] AI Service: Update `requirements.txt` and install dependencies [/]
+- [ ] Database: Seed `indian_stocks` table [ ]
+- [ ] Verification: Test connectivity and startup [ ]
