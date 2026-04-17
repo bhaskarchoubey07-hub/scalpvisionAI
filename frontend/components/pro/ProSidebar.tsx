@@ -14,12 +14,16 @@ import {
   Monitor,
   Brain,
   ShieldCheck,
-  Calculator
+  Calculator,
+  Terminal,
+  LineChart
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const menuItems = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/pro" },
+  { name: "Trading Terminal", icon: Terminal, href: "/pro/terminal" },
+  { name: "Live Chart", icon: LineChart, href: "/pro/chart" },
   { name: "Accuracy Engine", icon: ShieldCheck, href: "/pro/accuracy-engine" },
   { name: "Enhanced Backtest", icon: Calculator, href: "/pro/backtest-enhanced" },
   { name: "Decision Engine", icon: Brain, href: "/pro/decision-engine" },
