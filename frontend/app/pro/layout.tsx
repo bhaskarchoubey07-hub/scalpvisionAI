@@ -1,6 +1,7 @@
 "use client";
 
 import { ProSidebar } from "@/components/pro/ProSidebar";
+import DataStatusIndicator from "@/components/pro/DataStatusIndicator";
 
 export default function ProLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,9 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
       
       <main className="flex-1 relative z-10 overflow-y-auto ml-64 p-8">
         <div className="max-w-7xl mx-auto min-h-full flex flex-col">
+          <div className="flex justify-end mb-8">
+             <DataStatusIndicator />
+          </div>
           {children}
         </div>
       </main>

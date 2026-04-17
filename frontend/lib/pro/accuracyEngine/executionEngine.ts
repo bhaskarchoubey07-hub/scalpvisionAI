@@ -3,6 +3,7 @@ import { detectMarketContext, MarketContext } from "./marketContext";
 import { applyHardGates, FilterResult } from "./tradeFilter";
 import { optimizeEntry, EntryPlan } from "./entryTiming";
 import { getExitPlan, ExitPlan } from "./exitManager";
+import { validateSignalContext } from "../system/reliabilityWrapper";
 
 export interface FinalTradePlan {
   id: string;
@@ -17,6 +18,19 @@ export interface FinalTradePlan {
 
 export function processTrade(rawSignal: AnalysisResult): FinalTradePlan {
   const signalId = rawSignal.symbol || "UNKNOWN";
+  
+  // 0. Reliability Guard (Critical Rule)
+  const reliability = validateSignalContext(rawSignal);
+  if (!reliability.canTrade) {
+    return {
+      id: signalId,
+      status: "REJECTED",
+      confidence: rawSignal.confidence || 0,
+      context: detectMarketContext(rawSignal),
+      filter: { valid: false, reason: reliability.reason || "Unreliable data context" },
+      reason: "Reliability Failure: " + reliability.reason
+    };
+  }
   
   // 1. Initial Confidence Check
   const confidence = rawSignal.confidence || 0;
