@@ -1,9 +1,21 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { ProSidebar } from "@/components/pro/ProSidebar";
 import DataStatusIndicator from "@/components/pro/DataStatusIndicator";
 
 export default function ProLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isFullscreen = pathname === "/pro/chart-fullscreen";
+
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-[#030712] w-screen h-screen overflow-hidden antialiased">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[50] bg-[#030712] flex overflow-hidden text-slate-100 antialiased">
       {/* Neural background substitute for Pro layer */}
