@@ -9,8 +9,8 @@ export default function ChartPage() {
   const [symbol, setSymbol] = useState("NSE:RELIANCE");
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 h-[calc(100vh-140px)] flex flex-col">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
         <div>
           <div className="flex items-center gap-2 mb-1">
              <div className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Live Market Intelligence</div>
@@ -34,7 +34,7 @@ export default function ChartPage() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 relative group">
+      <div className="flex-1 relative group w-full min-h-0 container-fill">
         <TradingViewChart symbol={symbol} />
         <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
             <button className="p-2 rounded-xl bg-slate-900/80 border border-white/10 text-white backdrop-blur-md">

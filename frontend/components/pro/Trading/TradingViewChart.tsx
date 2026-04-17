@@ -50,7 +50,7 @@ export default function TradingViewChart({ symbol = "NSE:RELIANCE" }: TradingVie
   }, [symbol]);
 
   return (
-    <div className="w-full h-full min-h-[600px] glass rounded-[2rem] border border-white/5 overflow-hidden bg-slate-950/50">
+    <div className="w-full h-full glass rounded-[2rem] border border-white/5 overflow-hidden bg-slate-950/50">
       <div 
         id="tradingview_chart_container" 
         ref={containerRef}
