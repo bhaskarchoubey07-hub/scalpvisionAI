@@ -10,12 +10,14 @@ import {
   History, 
   BookOpen, 
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Monitor
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const menuItems = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/pro" },
+  { name: "Advanced Dashboard", icon: Monitor, href: "/pro/external-dashboard" },
   { name: "AI Signals", icon: Zap, href: "/pro/signals" },
   { name: "Confidence Engine", icon: BarChart3, href: "/pro/confidence" },
   { name: "Multi-Timeframe", icon: Layers, href: "/pro/multitimeframe" },
