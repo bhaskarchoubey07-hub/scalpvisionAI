@@ -11,12 +11,18 @@ import {
   BookOpen, 
   ChevronRight,
   Sparkles,
-  Monitor
+  Monitor,
+  Brain,
+  ShieldCheck,
+  Calculator
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const menuItems = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/pro" },
+  { name: "Accuracy Engine", icon: ShieldCheck, href: "/pro/accuracy-engine" },
+  { name: "Enhanced Backtest", icon: Calculator, href: "/pro/backtest-enhanced" },
+  { name: "Decision Engine", icon: Brain, href: "/pro/decision-engine" },
   { name: "Advanced Dashboard", icon: Monitor, href: "/pro/external-dashboard" },
   { name: "AI Signals", icon: Zap, href: "/pro/signals" },
   { name: "Confidence Engine", icon: BarChart3, href: "/pro/confidence" },
