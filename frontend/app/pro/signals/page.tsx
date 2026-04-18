@@ -1,20 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Filter, Search, MoreHorizontal, Loader2 } from "lucide-react";
-import { fetchProSignals, ProSignal } from "@/lib/api";
+import { getSignals } from "../services/signalService";
+import { SignalData } from "../engines/signalEngine";
 
 export default function SignalsPage() {
-  const [signals, setSignals] = useState<ProSignal[]>([]);
+  const [signals, setSignals] = useState<SignalData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const refreshInterval = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchSignals = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    try {
+      const data = await getSignals();
+      setSignals(data);
+    } catch (err) {
+      console.error("Signal fetch error:", err);
+      // Skip error and let the UI show previous or empty state to prevent crash
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchProSignals()
-      .then(setSignals)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+    fetchSignals(true);
+
+    refreshInterval.current = setInterval(() => {
+      fetchSignals(false);
+    }, 12000); // 12 seconds refresh
+
+    return () => {
+      if (refreshInterval.current) clearInterval(refreshInterval.current);
+    };
   }, []);
 
   return (
@@ -47,6 +67,10 @@ export default function SignalsPage() {
           </div>
         ) : error ? (
           <div className="p-20 text-center text-red-400 font-medium">{error}</div>
+        ) : signals.length === 0 ? (
+          <div className="p-20 text-center text-slate-500 glass rounded-3xl border border-white/5 bg-panel/20">
+             No signals available
+          </div>
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
@@ -62,13 +86,13 @@ export default function SignalsPage() {
             </thead>
             <tbody className="divide-y divide-white/5">
               {signals.map((sig, i) => (
-                <tr key={sig.id || i} className="hover:bg-white/[0.02] transition-colors group cursor-pointer">
+                <tr key={i} className="hover:bg-white/[0.02] transition-colors group cursor-pointer">
                   <td className="px-6 py-4">
                     <span className="text-sm font-bold text-white uppercase">{sig.asset_symbol}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${sig.direction.toUpperCase() === "LONG" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
-                      {sig.direction.toUpperCase()}
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${sig.direction === "LONG" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+                      {sig.direction === "LONG" ? "BUY" : "SELL"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-400 font-mono">{sig.entry_price}</td>
@@ -82,8 +106,8 @@ export default function SignalsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full border border-indigo-500/30 text-indigo-400 bg-indigo-500/5`}>
-                      Active
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${sig.status === 'HIGH' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' : 'border-indigo-500/30 text-indigo-400 bg-indigo-500/5'}`}>
+                      {sig.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">

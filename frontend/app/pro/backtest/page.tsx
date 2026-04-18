@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { History, Play, Settings, Download, LineChart, Loader2 } from "lucide-react";
-import { runBacktest, BacktestResult } from "@/lib/api";
+import { runBacktest, BacktestResult } from "../engines/backtestEngine";
 
 export default function BacktestPage() {
   const [loading, setLoading] = useState(false);
@@ -14,7 +14,7 @@ export default function BacktestPage() {
   const handleRun = async () => {
     setLoading(true);
     try {
-      const res = await runBacktest(strategy, range);
+      const res = await runBacktest({ strategy, range });
       setResults(res);
     } catch (err) {
       console.error(err);
@@ -104,30 +104,38 @@ export default function BacktestPage() {
                 <div className="flex items-center justify-center h-64 border border-dashed border-white/5 rounded-3xl">
                    <div className="flex flex-col items-center gap-4 text-slate-700">
                       <History className="h-12 w-12 opacity-20" />
-                      <p className="text-sm font-medium opacity-40 uppercase tracking-widest text-center">Select Configuration<br/>to generate equity curve</p>
+                      <p className="text-sm font-medium opacity-40 uppercase tracking-widest text-center">Run simulation to see results<br/>and generate equity curve</p>
                    </div>
                 </div>
               ) : (
                 <div className="relative h-64 w-full flex items-end gap-1 px-4">
                    {/* Simulated Chart Visualization */}
-                   {Array.from({ length: 40 }).map((_, i) => (
-                     <motion.div 
-                        key={i}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${20 + Math.sin(i * 0.5) * 10 + Math.random() * 60}%` }}
-                        className="flex-1 bg-accent/20 rounded-t-sm"
-                     />
-                   ))}
-                   <div className="absolute inset-x-0 top-1/2 border-t border-accent/20 border-dashed" />
+                   {results.equityCurve.map((point, i) => {
+                     const min = Math.min(...results.equityCurve.map(p => p.value));
+                     const max = Math.max(...results.equityCurve.map(p => p.value));
+                     const rangeValue = max - min || 1;
+                     const height = ((point.value - min) / rangeValue) * 80 + 10;
+                     
+                     return (
+                      <motion.div 
+                          key={i}
+                          initial={{ height: 0 }}
+                          animate={{ height: `${height}%` }}
+                          className={`flex-1 ${point.value >= (results.equityCurve[i-1]?.value || point.value) ? 'bg-emerald-500/40' : 'bg-red-500/40'} rounded-t-sm`}
+                      />
+                     );
+                   })}
+                   <div className="absolute inset-x-0 top-1/2 border-t border-white/5 border-dashed" />
                 </div>
               )}
            </div>
 
-           <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-4 gap-6">
               {[
                 { label: "Net Profit", value: results ? `$${results.net_profit}` : "$0.00", color: "text-emerald-400" },
+                { label: "Win Rate", value: results ? `${results.win_rate}%` : "0.0%", color: "text-indigo-400" },
                 { label: "Max Drawdown", value: results ? `${results.max_drawdown}%` : "0.0%", color: "text-red-400" },
-                { label: "Sharpe Ratio", value: results ? results.sharpe_ratio : "0.00", color: "text-indigo-400" },
+                { label: "Sharpe Ratio", value: results ? results.sharpe_ratio : "0.00", color: "text-slate-400" },
               ].map(res => (
                  <div key={res.label} className="glass rounded-2xl p-6 border border-white/5 bg-panel/30">
                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{res.label}</div>

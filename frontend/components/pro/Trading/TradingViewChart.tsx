@@ -4,6 +4,8 @@ import React, { useEffect, useRef } from "react";
 
 interface TradingViewChartProps {
   symbol?: string;
+  interval?: string;
+  id?: string;
 }
 
 declare global {
@@ -12,7 +14,11 @@ declare global {
   }
 }
 
-export default function TradingViewChart({ symbol = "NSE:RELIANCE" }: TradingViewChartProps) {
+export default function TradingViewChart({ 
+  symbol = "NSE:RELIANCE", 
+  interval = "5",
+  id = "tradingview_chart_container"
+}: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,7 +30,7 @@ export default function TradingViewChart({ symbol = "NSE:RELIANCE" }: TradingVie
         new window.TradingView.widget({
           autosize: true,
           symbol: symbol,
-          interval: "5",
+          interval: interval,
           timezone: "Asia/Kolkata",
           theme: "dark",
           style: "1",
@@ -33,7 +39,7 @@ export default function TradingViewChart({ symbol = "NSE:RELIANCE" }: TradingVie
           enable_publishing: false,
           hide_side_toolbar: false,
           allow_symbol_change: true,
-          container_id: containerRef.current.id,
+          container_id: id,
           studies: [
             "RSI@tv-basicstudies",
             "MACD@tv-basicstudies",
@@ -52,7 +58,7 @@ export default function TradingViewChart({ symbol = "NSE:RELIANCE" }: TradingVie
   return (
     <div style={{ height: "100%", width: "100%" }}>
       <div 
-        id="tradingview_chart_container" 
+        id={id} 
         ref={containerRef}
         style={{ height: "100%", width: "100%" }}
       />

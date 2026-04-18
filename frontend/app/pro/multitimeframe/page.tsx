@@ -2,6 +2,16 @@
 
 import { motion } from "framer-motion";
 import { Layers, Maximize2, RefreshCw } from "lucide-react";
+import TradingViewChart from "@/components/pro/Trading/TradingViewChart";
+
+const TIMEFRAME_MAP: Record<string, string> = {
+  "M1": "1",
+  "M5": "5",
+  "M15": "15",
+  "H1": "60",
+  "H4": "240",
+  "D1": "D"
+};
 
 export default function MultiTimeframePage() {
   return (
@@ -31,12 +41,12 @@ export default function MultiTimeframePage() {
               </div>
               <Maximize2 className="h-3 w-3 text-slate-600 group-hover:text-slate-400 transition-colors cursor-pointer" />
             </div>
-            <div className="flex-1 flex items-center justify-center bg-[#030712]">
-                <div className="flex flex-col items-center gap-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <div className="w-32 h-1 bg-gradient-to-r from-transparent via-accent to-transparent" />
-                    <div className="w-24 h-1 bg-gradient-to-r from-transparent via-accent to-transparent" />
-                    <div className="w-16 h-1 bg-gradient-to-r from-transparent via-accent to-transparent" />
-                </div>
+            <div className="flex-1 bg-[#030712] relative min-h-[300px]">
+                <TradingViewChart 
+                  id={`chart_${tf}`}
+                  interval={TIMEFRAME_MAP[tf]}
+                  symbol="NSE:RELIANCE"
+                />
             </div>
             <div className="p-4 bg-white/[0.03] border-t border-white/5 flex justify-between items-center">
                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Trend Alignment</div>
