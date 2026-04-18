@@ -16,11 +16,14 @@ export default function ExecuteTradeButton({ symbol, side, quantity = 1 }: Execu
   const cleanSymbol = symbol.split(":")[1] || symbol;
 
   const handleExecute = (broker: "zerodha" | "upstox") => {
+    // Zerodha Kite: Remove exchange prefix or suffix (e.g. NSE:RELIANCE or RELIANCE.NS -> RELIANCE)
+    const zerodhaSymbol = symbol.split(":")[1] || symbol.split(".")[0] || symbol;
+    
     let url = "";
     if (broker === "zerodha") {
-      url = `https://kite.zerodha.com/?symbol=${cleanSymbol}&transaction_type=${side}&quantity=${quantity}`;
+      url = `https://kite.zerodha.com/?symbol=${zerodhaSymbol}&transaction_type=${side}`;
     } else {
-      url = `https://upstox.com/trading/buy?symbol=${cleanSymbol}&side=${side.toLowerCase()}&quantity=${quantity}`;
+      url = `https://upstox.com/trading/buy?symbol=${zerodhaSymbol}&side=${side.toLowerCase()}&quantity=${quantity}`;
     }
     
     window.open(url, "_blank");
