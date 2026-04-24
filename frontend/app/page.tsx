@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, BrainCircuit, ShieldCheck, Zap, Sparkles } from "lucide-react";
+import { PaymentSection } from "@/components/PaymentSection";
 
 const features = [
   {
@@ -52,6 +53,8 @@ export default function HomePage() {
           </div>
         </div>
       </motion.section>
+
+      <PaymentSection />
 
       <section className="mt-8 grid gap-6 md:grid-cols-3">
         {features.map(({ title, description, icon: Icon }, index) => (
