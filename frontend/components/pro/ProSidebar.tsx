@@ -16,12 +16,14 @@ import {
   ShieldCheck,
   Calculator,
   Terminal,
-  LineChart
+  LineChart,
+  CreditCard
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const menuItems = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/pro" },
+  { name: "Payments", icon: CreditCard, href: "/pro/payments" },
   { name: "Trading Terminal", icon: Terminal, href: "/pro/terminal" },
   { name: "Live Chart", icon: LineChart, href: "/pro/chart" },
   { name: "Accuracy Engine", icon: ShieldCheck, href: "/pro/accuracy-engine" },

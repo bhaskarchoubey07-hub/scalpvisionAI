@@ -16,6 +16,8 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const isPayments = pathname === "/pro/payments";
+
   return (
     <div className="fixed inset-0 z-[50] bg-[#030712] flex overflow-hidden text-slate-100 antialiased">
       {/* Neural background substitute for Pro layer */}
@@ -26,11 +28,13 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
 
       <ProSidebar />
       
-      <main className="flex-1 relative z-10 overflow-y-auto ml-64 p-8">
-        <div className="max-w-7xl mx-auto min-h-full flex flex-col">
-          <div className="flex justify-end mb-8">
-             <DataStatusIndicator />
-          </div>
+      <main className={`flex-1 relative z-10 overflow-y-auto ml-64 ${isPayments ? "h-screen" : "p-8"}`}>
+        <div className={`min-h-full flex flex-col ${isPayments ? "w-full h-full" : "max-w-7xl mx-auto"}`}>
+          {!isPayments && (
+            <div className="flex justify-end mb-8">
+               <DataStatusIndicator />
+            </div>
+          )}
           {children}
         </div>
       </main>
