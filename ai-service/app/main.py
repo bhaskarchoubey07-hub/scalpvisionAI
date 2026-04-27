@@ -5,7 +5,9 @@ from .schemas import (
     AdvisorRequest, AdvisorResponse, 
     ForecastRequest, ForecastResponse,
     ExplainRequest, ExplainResponse,
-    EnhanceRequest, EnhanceResponse
+    EnhanceRequest, EnhanceResponse,
+    MLPredictRequest, MLPredictResponse,
+    MLTrainRequest, MLTrainResponse
 )
 from .services.pipeline import run_analysis_pipeline
 from .services.ai_explainer import ai_explainer

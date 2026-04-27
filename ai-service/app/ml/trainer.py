@@ -4,12 +4,17 @@ import xgboost as xgb
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import accuracy_score, precision_score, recall_score
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
 import joblib
 import os
 from typing import Dict, Any
+
+try:
+    import tensorflow as tf
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense, Dropout
+    HAS_TF = True
+except ImportError:
+    HAS_TF = False
 
 class ModelTrainer:
     def __init__(self, model_dir: str = "models"):
@@ -33,7 +38,10 @@ class ModelTrainer:
         model.fit(X_train, y_train)
         return model
 
-    def train_lstm(self, X_train: np.ndarray, y_train: np.ndarray, input_shape: tuple) -> Sequential:
+    def train_lstm(self, X_train: np.ndarray, y_train: np.ndarray, input_shape: tuple) -> Any:
+        if not HAS_TF:
+            raise ImportError("TensorFlow is not installed. LSTM training is unavailable.")
+            
         model = Sequential([
             LSTM(50, return_sequences=True, input_shape=input_shape),
             Dropout(0.2),

@@ -1,0 +1,13 @@
+numpy
+pandas
+yfinance
+xgboost
+scikit-learn
+supabase
+psycopg2-binary
+matplotlib
+fastapi
+uvicorn
+python-dotenv
+requests
+pydantic

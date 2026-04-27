@@ -1,5 +1,4 @@
 import pandas as pd
-import pandas_ta as ta
 import numpy as np
 
 class FeatureEngineer:
@@ -8,32 +7,43 @@ class FeatureEngineer:
 
     def add_technical_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Add RSI, MACD, MA, Bollinger Bands, Volume spikes.
+        Add RSI, MACD, MA, Bollinger Bands manually (no pandas_ta dependency).
         """
         # RSI
-        df['rsi'] = ta.rsi(df['close'], length=14)
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['rsi'] = 100 - (100 / (1 + rs))
         
-        # MACD
-        macd = ta.macd(df['close'])
-        df = pd.concat([df, macd], axis=1)
+        # MACD (12, 26, 9)
+        exp1 = df['close'].ewm(span=12, adjust=False).mean()
+        exp2 = df['close'].ewm(span=26, adjust=False).mean()
+        df['macd'] = exp1 - exp2
+        df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+        df['macd_hist'] = df['macd'] - df['macd_signal']
         
         # Moving Averages
-        df['ma20'] = ta.sma(df['close'], length=20)
-        df['ma50'] = ta.sma(df['close'], length=50)
-        df['ma200'] = ta.sma(df['close'], length=200)
-        
-        # EMA
-        df['ema20'] = ta.ema(df['close'], length=20)
+        df['ma20'] = df['close'].rolling(window=20).mean()
+        df['ma50'] = df['close'].rolling(window=50).mean()
+        df['ma200'] = df['close'].rolling(window=200).mean()
+        df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
         
         # Bollinger Bands
-        bb = ta.bbands(df['close'], length=20, std=2)
-        df = pd.concat([df, bb], axis=1)
+        std = df['close'].rolling(window=20).std()
+        df['bb_upper'] = df['ma20'] + (std * 2)
+        df['bb_lower'] = df['ma20'] - (std * 2)
         
-        # ATR (Volatility)
-        df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=14)
+        # ATR (Simplified)
+        high_low = df['high'] - df['low']
+        high_close = abs(df['high'] - df['close'].shift())
+        low_close = abs(df['low'] - df['close'].shift())
+        ranges = pd.concat([high_low, high_close, low_close], axis=1)
+        true_range = ranges.max(axis=1)
+        df['atr'] = true_range.rolling(14).mean()
         
         # Volume spikes
-        df['vol_ma20'] = ta.sma(df['volume'], length=20)
+        df['vol_ma20'] = df['volume'].rolling(window=20).mean()
         df['vol_spike'] = df['volume'] > (df['vol_ma20'] * 1.5)
         
         return df
