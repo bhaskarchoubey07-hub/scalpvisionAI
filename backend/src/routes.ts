@@ -460,6 +460,46 @@ export function createRouter() {
     return response.status(204).send();
   }));
 
+  // --- EXPENSES ---
+  router.get("/pro/expenses", requireAuth, asyncHandler(async (_request, response) => {
+    const { rows } = await pool.query(
+      "SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC",
+      [response.locals.user.sub]
+    );
+    return response.json(rows);
+  }));
+
+  router.post("/pro/expenses", requireAuth, asyncHandler(async (request, response) => {
+    const schema = z.object({
+      title: z.string().min(1),
+      amount: z.number(),
+      category: z.string().optional(),
+      date: z.string().optional()
+    });
+    const payload = schema.parse(request.body);
+    const { rows } = await pool.query(
+      `INSERT INTO expenses (user_id, title, amount, category, date)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [
+        response.locals.user.sub,
+        payload.title,
+        payload.amount,
+        payload.category ?? "General",
+        payload.date ?? new Date().toISOString()
+      ]
+    );
+    return response.status(201).json(rows[0]);
+  }));
+
+  router.delete("/pro/expenses/:id", requireAuth, asyncHandler(async (request, response) => {
+    await pool.query(
+      "DELETE FROM expenses WHERE id = $1 AND user_id = $2",
+      [request.params.id, response.locals.user.sub]
+    );
+    return response.status(204).send();
+  }));
+
   // --- FORECASTING (self-contained, no Python dependency) ---
   router.post("/market/forecast", asyncHandler(async (request, response) => {
     const schema = z.object({

@@ -11,6 +11,11 @@ from .services.pipeline import run_analysis_pipeline
 from .services.ai_explainer import ai_explainer
 from .services.forecast_engine import forecast_engine
 from .services.signal_enhancer import signal_enhancer
+from .ml.data_pipeline import DataPipeline
+from .ml.features import FeatureEngineer
+from .ml.labeling import Labeler
+from .ml.trainer import ModelTrainer
+from .ml.backtester import Backtester
 
 app = FastAPI(title="ScalpVision AI Engine", version="0.1.0")
 
@@ -79,4 +84,78 @@ def enhance_signal(payload: EnhanceRequest):
         stop_loss=enhanced["stop_loss"],
         take_profit=enhanced["take_profit"],
         reason=enhanced["refinement_reason"]
+    )
+
+
+@app.post("/ml/predict", response_model=MLPredictResponse)
+def ml_predict(payload: MLPredictRequest):
+    dp = DataPipeline()
+    fe = FeatureEngineer()
+    trainer = ModelTrainer()
+    
+    # Get latest data
+    df = dp.fetch_historical_data(payload.symbol, payload.timeframe, period="60d")
+    df_features = fe.get_features(df)
+    
+    # Load model
+    model = trainer.load_model(f"{payload.symbol}_{payload.timeframe}_{payload.model_type}")
+    
+    # Predict
+    latest_features = df_features.iloc[[-1]].drop(columns=['timestamp'])
+    if 'target' in latest_features.columns:
+        latest_features = latest_features.drop(columns=['target'])
+        
+    probs = model.predict_proba(latest_features)[0]
+    pred = model.predict(latest_features)[0]
+    
+    signals = {0: "HOLD", 1: "BUY", 2: "SELL"}
+    
+    return MLPredictResponse(
+        signal=signals[pred],
+        confidence=float(max(probs) * 100),
+        probability=float(max(probs)),
+        features_used=latest_features.columns.tolist(),
+        current_price=float(df['close'].iloc[-1])
+    )
+
+
+@app.post("/ml/train", response_model=MLTrainResponse)
+def ml_train(payload: MLTrainRequest):
+    dp = DataPipeline()
+    fe = FeatureEngineer()
+    labeler = Labeler()
+    trainer = ModelTrainer()
+    
+    # 1. Fetch & Sync
+    df = dp.fetch_historical_data(payload.symbol, payload.timeframe, period=payload.period)
+    dp.sync_to_db(payload.symbol, payload.timeframe, df)
+    
+    # 2. Features & Labels
+    df_features = fe.get_features(df)
+    df_labeled = labeler.label_data(df_features)
+    
+    # 3. Train
+    X = df_labeled.drop(columns=['target', 'timestamp'])
+    y = df_labeled['target']
+    
+    # Simple split for now
+    split = int(len(X) * 0.8)
+    X_train, X_test = X.iloc[:split], X.iloc[split:]
+    y_train, y_test = y.iloc[:split], y.iloc[split:]
+    
+    if payload.model_type == 'xgboost':
+        model = trainer.train_xgboost(X_train, y_train)
+    else:
+        model = trainer.train_random_forest(X_train, y_train)
+        
+    metrics = trainer.validate(model, X_test, y_test)
+    
+    # 4. Save
+    model_name = f"{payload.symbol}_{payload.timeframe}_{payload.model_type}"
+    trainer.save_model(model, model_name)
+    
+    return MLTrainResponse(
+        status="success",
+        metrics=metrics,
+        model_version="1.0.0"
     )

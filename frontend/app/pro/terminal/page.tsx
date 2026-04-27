@@ -3,8 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, ShieldCheck, Terminal, Cpu, Loader2, RefreshCw, AlertCircle } from "lucide-react";
-import { getSignals } from "../services/signalService";
-import { SignalData } from "../engines/signalEngine";
+import { SignalService } from "@/pro/services/signalService";
+import { SignalData } from "@/pro/engines/signalEngine";
+import { BrokerRedirect } from "@/pro/integrations/brokerRedirect";
 import ExecuteTradeButton from "@/components/pro/Trading/ExecuteTradeButton";
 import TradingDisclaimer from "@/components/pro/Trading/TradingDisclaimer";
 
@@ -17,17 +18,20 @@ export default function TerminalPage() {
   const loadSignals = useCallback(async (showLoading = false) => {
     if (showLoading) setLoading(true);
     try {
-      const data = await getSignals();
+      const data = await SignalService.getSignals();
       setSignals(data);
       setError(null);
     } catch (err) {
       console.error("Terminal load error:", err);
-      // Don't show critical error to prevent UI crash, just log it
       if (signals.length === 0) setError("Engine connection failed. Please retry.");
     } finally {
       setLoading(false);
     }
   }, [signals.length]);
+
+  const handleExecute = (signal: SignalData) => {
+    BrokerRedirect.redirectToBroker(signal);
+  };
 
   useEffect(() => {
     loadSignals(true);

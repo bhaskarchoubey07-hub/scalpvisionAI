@@ -10,3 +10,11 @@ requests==2.32.3
 pandas
 scipy
 statsmodels
+yfinance
+pandas_ta
+xgboost
+scikit-learn
+tensorflow
+supabase
+psycopg2-binary
+matplotlib

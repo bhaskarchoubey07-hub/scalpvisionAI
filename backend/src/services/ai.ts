@@ -63,6 +63,12 @@ export type AnalysisResult = {
     strength: number;
     description: string;
   }>;
+  ml_prediction?: {
+    signal: "BUY" | "SELL" | "HOLD";
+    confidence: number;
+    probability: number;
+    features_used: string[];
+  };
 };
 
 /* ─────────────── LLM Explanation (Optional) ─────────────── */
@@ -105,6 +111,32 @@ async function fetchAIExplanation(signal: SignalResult): Promise<string | null> 
   return null;
 }
 
+async function fetchMLPrediction(symbol: string, timeframe: string): Promise<any | null> {
+  const aiServiceUrl = config.aiServiceUrl;
+  if (!aiServiceUrl) return null;
+
+  try {
+    const response = await fetch(`${aiServiceUrl}/ml/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        symbol,
+        timeframe,
+        model_type: "xgboost",
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch {
+    // Graceful fallback
+  }
+
+  return null;
+}
+
 /* ─────────────── Main Analysis Function ─────────────── */
 
 export async function analyzeChart(request: AnalysisRequest): Promise<AnalysisResult> {
@@ -120,6 +152,9 @@ export async function analyzeChart(request: AnalysisRequest): Promise<AnalysisRe
     summary = generateFallbackSummary(signal);
   }
   signal.summary = summary;
+
+  // 2.5 Try to get Quantitative ML Prediction
+  const mlPred = await fetchMLPrediction(symbol, signal.timeframeAnalysis[0]?.timeframe || "1h");
 
   // 3. Find key indicator values for backward-compatible response
   const rsiIndicator = signal.indicators.find((i) => i.name.startsWith("RSI"));
@@ -162,6 +197,12 @@ export async function analyzeChart(request: AnalysisRequest): Promise<AnalysisRe
       net_score: t.netScore,
     })),
     patterns: signal.patterns || [],
+    ml_prediction: mlPred ? {
+      signal: mlPred.signal,
+      confidence: mlPred.confidence,
+      probability: mlPred.probability,
+      features_used: mlPred.features_used
+    } : undefined,
   };
 }
 

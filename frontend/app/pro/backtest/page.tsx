@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { History, Play, Settings, Download, LineChart, Loader2 } from "lucide-react";
-import { runBacktest, BacktestResult } from "../engines/backtestEngine";
+import { BacktestEngine, BacktestResult } from "@/pro/engines/backtestEngine";
 
 export default function BacktestPage() {
   const [loading, setLoading] = useState(false);
@@ -14,7 +14,7 @@ export default function BacktestPage() {
   const handleRun = async () => {
     setLoading(true);
     try {
-      const res = await runBacktest({ strategy, range });
+      const res = await BacktestEngine.runSimulation({ strategy, range });
       setResults(res);
     } catch (err) {
       console.error(err);

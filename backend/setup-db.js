@@ -7,7 +7,7 @@ async function setupDB() {
 
   // We connect using the IPv6 address to avoid DNS lookup timeout in this environment
   const client = new Client({
-    host: '2406:da14:271:9900:8:e72c:1fad:5bab:b2f1',
+    host: 'db.scddpuivohgsnhwpmjwt.supabase.co',
     port: 5432,
     user: 'postgres',
     password: '8651942079Bh@',

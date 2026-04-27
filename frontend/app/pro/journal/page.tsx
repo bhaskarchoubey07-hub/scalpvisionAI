@@ -3,30 +3,36 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Plus, Calendar, Tag, Search, Loader2, Trash2 } from "lucide-react";
-import { getTrades, addTrade, deleteTrade, JournalEntry } from "./journalService";
+import { useAuth } from "@/lib/auth";
+import { JournalService, JournalEntry } from "@/pro/services/journalService";
 
 export default function JournalPage() {
+  const { token } = useAuth();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const loadTrades = useCallback(() => {
+  const loadTrades = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
-    // Simulate low-latency load
-    setTimeout(() => {
-      const trades = getTrades();
+    try {
+      const trades = await JournalService.getEntries(token);
       setEntries(trades);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoading(false);
-    }, 500);
-  }, []);
+    }
+  }, [token]);
 
   useEffect(() => {
     loadTrades();
   }, [loadTrades]);
 
-  const handleAddDemo = () => {
+  const handleAddDemo = async () => {
+    if (!token) return;
     const symbols = ["BTC/USDT", "ETH/USDT", "RELIANCE", "TSLA", "AAPL"];
-    addTrade({
+    await JournalService.addEntry(token, {
       asset_symbol: symbols[Math.floor(Math.random() * symbols.length)],
       market: "crypto",
       direction: Math.random() > 0.5 ? "long" : "short",
@@ -38,9 +44,10 @@ export default function JournalPage() {
     loadTrades();
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    deleteTrade(id);
+    if (!token) return;
+    await JournalService.deleteEntry(token, id);
     loadTrades();
   };
 

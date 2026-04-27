@@ -108,3 +108,26 @@ class EnhanceResponse(BaseModel):
     stop_loss: float
     take_profit: float
     reason: str
+
+class MLPredictRequest(BaseModel):
+    symbol: str
+    timeframe: str = "1h"
+    model_type: Literal["xgboost", "rf", "lstm"] = "xgboost"
+
+class MLPredictResponse(BaseModel):
+    signal: str
+    confidence: float
+    probability: float
+    features_used: List[str]
+    current_price: float
+
+class MLTrainRequest(BaseModel):
+    symbol: str
+    timeframe: str = "1h"
+    period: str = "2y"
+    model_type: Literal["xgboost", "rf", "lstm"] = "xgboost"
+
+class MLTrainResponse(BaseModel):
+    status: str
+    metrics: dict
+    model_version: str

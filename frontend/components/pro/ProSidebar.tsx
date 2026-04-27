@@ -35,6 +35,7 @@ const menuItems = [
   { name: "Multi-Timeframe", icon: Layers, href: "/pro/multitimeframe" },
   { name: "Backtesting", icon: History, href: "/pro/backtest" },
   { name: "Trade Journal", icon: BookOpen, href: "/pro/journal" },
+  { name: "Expenses", icon: CreditCard, href: "/pro/expenses" },
 ];
 
 export function ProSidebar() {

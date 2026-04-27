@@ -82,3 +82,58 @@ CREATE TABLE IF NOT EXISTS leaderboard_entries (
   total_trades INTEGER DEFAULT 0,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS expenses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  amount NUMERIC(18,2) NOT NULL,
+  category TEXT,
+  date TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_expenses_user ON expenses(user_id);
+
+CREATE TABLE IF NOT EXISTS ohlcv_data (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  symbol TEXT NOT NULL,
+  timeframe TEXT NOT NULL,
+  open NUMERIC(18,8) NOT NULL,
+  high NUMERIC(18,8) NOT NULL,
+  low NUMERIC(18,8) NOT NULL,
+  close NUMERIC(18,8) NOT NULL,
+  volume NUMERIC(18,8),
+  timestamp TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(symbol, timeframe, timestamp)
+);
+
+CREATE TABLE IF NOT EXISTS ml_models (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,Version TEXT NOT NULL,
+  type TEXT NOT NULL, -- 'xgboost', 'random_forest', 'lstm'
+  metrics JSONB, -- accuracy, precision, recall, sharpe
+  parameters JSONB,
+  is_active BOOLEAN DEFAULT FALSE,
+  file_path TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS backtest_results (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  model_id UUID REFERENCES ml_models(id) ON DELETE CASCADE,
+  symbol TEXT NOT NULL,
+  timeframe TEXT NOT NULL,
+  start_date TIMESTAMPTZ NOT NULL,
+  end_date TIMESTAMPTZ NOT NULL,
+  total_trades INTEGER,
+  win_rate NUMERIC(5,2),
+  pnl NUMERIC(18,8),
+  max_drawdown NUMERIC(5,2),
+  sharpe_ratio NUMERIC(5,2),
+  trade_log JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ohlcv_symbol_time ON ohlcv_data(symbol, timeframe, timestamp);
