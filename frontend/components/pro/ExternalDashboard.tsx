@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { UploadCloud, Scan, Target, Crosshair, TrendingUp, CheckCircle2, AlertCircle, X, ShieldCheck, Zap } from "lucide-react";
+import { UploadCloud, Scan, Target, Crosshair, TrendingUp, CheckCircle2, AlertCircle, X, ShieldCheck, Zap, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ExternalDashboard() {
