@@ -16,7 +16,7 @@ export const getSignals = async (symbols = DEFAULT_SYMBOLS): Promise<SignalData[
       const quote = await marketDataService.fetchLiveQuote(item.market, item.symbol);
       if (quote.status === "error") return null;
       
-      return generateSignal(quote.symbol, quote.price, quote.changeValue);
+      return await generateSignal(quote.symbol, quote.price, quote.changeValue);
     } catch (error) {
       console.warn(`Failed to fetch signal for ${item.symbol}:`, error);
       return null;

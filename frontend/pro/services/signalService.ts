@@ -18,7 +18,7 @@ export class SignalService {
       const signalPromises = symbols.map(async (item) => {
         try {
           const quote = await marketDataService.fetchQuote(item.market, item.symbol);
-          const signal = SignalEngine.generateSignal(quote.symbol, quote.price, quote.changeValue);
+          const signal = await SignalEngine.generateSignal(quote.symbol, quote.price, quote.changeValue);
           
           if (ValidationEngine.isValidSignal(signal)) {
             return signal;
