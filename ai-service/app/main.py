@@ -112,10 +112,18 @@ def ml_predict(payload: MLPredictRequest):
     
     signals = {0: "HOLD", 1: "BUY", 2: "SELL"}
     
+    prob = float(max(probs))
+    returns = df['close'].pct_change().dropna()
+    vol = float(returns.std()) if len(returns) > 1 else 0.02
+    
+    vol_penalty = 15.0 * min(1.0, vol * 10)
+    confidence = (prob * 100) - vol_penalty
+    confidence = float(max(45.0, min(98.5, confidence)))
+    
     return MLPredictResponse(
         signal=signals[pred],
-        confidence=float(max(probs) * 100),
-        probability=float(max(probs)),
+        confidence=confidence,
+        probability=prob,
         features_used=latest_features.columns.tolist(),
         current_price=float(df['close'].iloc[-1])
     )

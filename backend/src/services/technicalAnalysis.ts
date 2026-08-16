@@ -15,6 +15,8 @@ import {
   StochasticRSI,
   ADX,
   SMA,
+  CCI,
+  OBV,
 } from "technicalindicators";
 
 import { detectDivergences, detectVolatilityBreakout, type PatternSignal } from "./patternEngine.js";
@@ -395,6 +397,182 @@ export function computeIndicators(
     }
   } catch { /* skip */ }
 
+  /* ── CCI (20) — Weight: 10 ── */
+  try {
+    const cciValues = CCI.calculate({
+      high: highs,
+      low: lows,
+      close: closes,
+      period: 20
+    });
+    const cciVal = last(cciValues);
+    if (cciVal !== undefined) {
+      let bias: "bullish" | "bearish" | "neutral" = "neutral";
+      let score = 0;
+      if (cciVal < -100) { bias = "bullish"; score = 10; }
+      else if (cciVal > 100) { bias = "bearish"; score = 10; }
+      
+      if (bias === "bullish") bullScore += score;
+      else if (bias === "bearish") bearScore += score;
+      
+      indicators.push({
+        name: "CCI (20)",
+        value: cciVal.toFixed(1),
+        numericValue: cciVal,
+        bias,
+        weight: 10,
+        score
+      });
+    }
+  } catch { /* skip */ }
+
+  /* ── OBV — Weight: 5 ── */
+  try {
+    const obvValues = OBV.calculate({
+      close: closes,
+      volume: volumes
+    });
+    const obvVal = last(obvValues);
+    const obvPrev = secondLast(obvValues);
+    if (obvVal !== undefined && obvPrev !== undefined) {
+      const bias = obvVal > obvPrev ? "bullish" as const : "bearish" as const;
+      const score = 5;
+      if (bias === "bullish") bullScore += score;
+      else bearScore += score;
+      
+      indicators.push({
+        name: "OBV",
+        value: obvVal > obvPrev ? "Rising" : "Falling",
+        numericValue: obvVal,
+        bias,
+        weight: 5,
+        score
+      });
+    }
+  } catch { /* skip */ }
+
+  /* ── SuperTrend (10,3) — Weight: 15 ── */
+  try {
+    const st = computeSuperTrend(candles);
+    const score = 15;
+    if (st.bias === "bullish") bullScore += score;
+    else if (st.bias === "bearish") bearScore += score;
+    
+    indicators.push({
+      name: "SuperTrend (10,3)",
+      value: st.value,
+      bias: st.bias,
+      weight: 15,
+      score
+    });
+  } catch { /* skip */ }
+
+  /* ── VWAP (20) — Weight: 10 ── */
+  try {
+    const vwap = computeVWAP(candles);
+    const score = 10;
+    if (vwap.bias === "bullish") bullScore += score;
+    else if (vwap.bias === "bearish") bearScore += score;
+    
+    indicators.push({
+      name: "VWAP (20)",
+      value: vwap.value,
+      bias: vwap.bias,
+      weight: 10,
+      score
+    });
+  } catch { /* skip */ }
+
+  /* ── Ichimoku Cloud — Weight: 10 ── */
+  try {
+    const ichi = computeIchimoku(candles);
+    const score = 10;
+    if (ichi.bias === "bullish") bullScore += score;
+    else if (ichi.bias === "bearish") bearScore += score;
+    
+    indicators.push({
+      name: "Ichimoku Cloud",
+      value: ichi.value,
+      bias: ichi.bias,
+      weight: 10,
+      score
+    });
+  } catch { /* skip */ }
+
+  /* ── Market Structure & Order Flow — Weight: 15 ── */
+  try {
+    const struct = analyzeMarketStructure(candles);
+    
+    // Check BOS/CHoCH
+    if (struct.structures.length > 0) {
+      const latestStruct = struct.structures[struct.structures.length - 1];
+      const score = 15;
+      if (latestStruct.type === "bullish") {
+        bullScore += score;
+      } else {
+        bearScore += score;
+      }
+      
+      indicators.push({
+        name: "Market Structure",
+        value: latestStruct.name,
+        bias: latestStruct.type,
+        weight: 15,
+        score
+      });
+    }
+    
+    // Check Order Blocks
+    const bullOBs = struct.orderBlocks.filter(ob => ob.type === "bullish");
+    const bearOBs = struct.orderBlocks.filter(ob => ob.type === "bearish");
+    
+    if (bullOBs.length > 0) {
+      const nearestOB = bullOBs[bullOBs.length - 1];
+      if (Math.abs(currentPrice - nearestOB.price) / currentPrice < 0.01) {
+        bullScore += 10;
+        indicators.push({
+          name: "Order Block",
+          value: `Near Bullish OB (${nearestOB.price.toFixed(2)})`,
+          bias: "bullish",
+          weight: 10,
+          score: 10
+        });
+      }
+    }
+    if (bearOBs.length > 0) {
+      const nearestOB = bearOBs[bearOBs.length - 1];
+      if (Math.abs(currentPrice - nearestOB.price) / currentPrice < 0.01) {
+        bearScore += 10;
+        indicators.push({
+          name: "Order Block",
+          value: `Near Bearish OB (${nearestOB.price.toFixed(2)})`,
+          bias: "bearish",
+          weight: 10,
+          score: 10
+        });
+      }
+    }
+    
+    // Check FVGs
+    const recentFVGs = struct.fvgs.slice(-2);
+    recentFVGs.forEach(fvg => {
+      const isFilling = fvg.type === "bullish" ? currentPrice > fvg.price : currentPrice < fvg.price;
+      if (isFilling) {
+        const score = 8;
+        if (fvg.type === "bullish") bullScore += score;
+        else bearScore += score;
+        
+        indicators.push({
+          name: "Fair Value Gap",
+          value: `Filling ${fvg.type.toUpperCase()} FVG (${fvg.price.toFixed(2)})`,
+          bias: fvg.type,
+          weight: 8,
+          score
+        });
+      }
+    });
+  } catch { /* skip */ }
+
   /* ── 8. ATR (14) — For Volatility & Level Placement ── */
   let atrValue = 0;
   try {
@@ -518,3 +696,209 @@ function computeSupportResistance(candles: Candle[], currentPrice: number): Supp
     pivotPoint: +pivot.toFixed(2),
   };
 }
+
+/* ─────────────── Advanced Quantitative Indicators ─────────────── */
+
+export function computeSuperTrend(candles: Candle[], period = 10, multiplier = 3) {
+  if (candles.length < period + 1) return { bias: "neutral" as const, value: "N/A" };
+  
+  const highs = candles.map(c => c.high);
+  const lows = candles.map(c => c.low);
+  const closes = candles.map(c => c.close);
+  
+  const atrValues = ATR.calculate({ close: closes, high: highs, low: lows, period });
+  
+  let finalUpper = 0;
+  let finalLower = 0;
+  let superTrend = 0;
+  let trend = 1;
+  
+  for (let i = period; i < candles.length; i++) {
+    const atrIdx = i - period;
+    const atr = atrValues[atrIdx] || (highs[i] - lows[i]);
+    const hl2 = (highs[i] + lows[i]) / 2;
+    
+    const basicUpper = hl2 + multiplier * atr;
+    const basicLower = hl2 - multiplier * atr;
+    const prevClose = closes[i - 1];
+    
+    if (i === period) {
+      finalUpper = basicUpper;
+      finalLower = basicLower;
+      superTrend = closes[i] > hl2 ? finalLower : finalUpper;
+      trend = closes[i] > hl2 ? 1 : -1;
+      continue;
+    }
+    
+    if (basicUpper < finalUpper || prevClose > finalUpper) finalUpper = basicUpper;
+    if (basicLower > finalLower || prevClose < finalLower) finalLower = basicLower;
+    
+    if (superTrend === finalUpper && closes[i] > finalUpper) {
+      trend = 1;
+      superTrend = finalLower;
+    } else if (superTrend === finalLower && closes[i] < finalLower) {
+      trend = -1;
+      superTrend = finalUpper;
+    } else {
+      superTrend = trend === 1 ? finalLower : finalUpper;
+    }
+  }
+  
+  const currentTrend = trend === 1 ? "bullish" as const : "bearish" as const;
+  return { bias: currentTrend, value: `${currentTrend.toUpperCase()} (ST:${superTrend.toFixed(2)})`, numericValue: superTrend };
+}
+
+export function computeVWAP(candles: Candle[]) {
+  let totalPV = 0;
+  let totalV = 0;
+  const recent = candles.slice(-20);
+  for (const c of recent) {
+    const vol = c.volume || 1;
+    totalPV += c.close * vol;
+    totalV += vol;
+  }
+  const vwap = totalV > 0 ? totalPV / totalV : candles[candles.length - 1].close;
+  const currentPrice = candles[candles.length - 1].close;
+  const bias = currentPrice > vwap ? "bullish" as const : "bearish" as const;
+  return { bias, value: `${bias.toUpperCase()} (VWAP:${vwap.toFixed(2)})`, numericValue: vwap };
+}
+
+export function computeIchimoku(candles: Candle[]) {
+  if (candles.length < 52) return { bias: "neutral" as const, value: "N/A" };
+  const getMinMax = (arr: Candle[], period: number) => {
+    const slice = arr.slice(-period);
+    const highs = slice.map(c => c.high);
+    const lows = slice.map(c => c.low);
+    return { max: Math.max(...highs), min: Math.min(...lows) };
+  };
+  const tenkanData = getMinMax(candles, 9);
+  const tenkan = (tenkanData.max + tenkanData.min) / 2;
+  const kijunData = getMinMax(candles, 26);
+  const kijun = (kijunData.max + kijunData.min) / 2;
+  const senkouA = (tenkan + kijun) / 2;
+  const senkouBData = getMinMax(candles, 52);
+  const senkouB = (senkouBData.max + senkouBData.min) / 2;
+  
+  const currentPrice = candles[candles.length - 1].close;
+  let bias: "bullish" | "bearish" | "neutral" = "neutral";
+  if (currentPrice > senkouA && currentPrice > senkouB) bias = "bullish";
+  else if (currentPrice < senkouA && currentPrice < senkouB) bias = "bearish";
+  
+  return { bias, value: `${bias.toUpperCase()} (Cloud Top:${Math.max(senkouA, senkouB).toFixed(2)})`, numericValue: senkouA };
+}
+
+export function computeVolumeProfile(candles: Candle[]) {
+  const recent = candles.slice(-50);
+  const closes = recent.map(c => c.close);
+  const minPrice = Math.min(...closes);
+  const maxPrice = Math.max(...closes);
+  const range = maxPrice - minPrice;
+  const numBins = 10;
+  const binWidth = range / numBins;
+  
+  const bins = new Array(numBins).fill(0).map((_, i) => ({
+    low: minPrice + i * binWidth,
+    high: minPrice + (i + 1) * binWidth,
+    volume: 0
+  }));
+  
+  for (const c of recent) {
+    const binIdx = Math.min(numBins - 1, Math.floor((c.close - minPrice) / (binWidth + 1e-9)));
+    bins[binIdx].volume += c.volume || 1;
+  }
+  
+  let maxVol = 0;
+  let hvnPrice = 0;
+  let minVol = Infinity;
+  let lvnPrice = 0;
+  
+  bins.forEach(b => {
+    const mid = (b.low + b.high) / 2;
+    if (b.volume > maxVol) {
+      maxVol = b.volume;
+      hvnPrice = mid;
+    }
+    if (b.volume < minVol) {
+      minVol = b.volume;
+      lvnPrice = mid;
+    }
+  });
+  
+  return { hvnPrice, lvnPrice, bins };
+}
+
+export type StructureResult = {
+  structures: { name: string; price: number; type: "bullish" | "bearish" }[];
+  orderBlocks: { price: number; type: "bullish" | "bearish"; volume: number }[];
+  fvgs: { price: number; type: "bullish" | "bearish"; size: number }[];
+};
+
+export function analyzeMarketStructure(candles: Candle[]): StructureResult {
+  const structures: StructureResult["structures"] = [];
+  const orderBlocks: StructureResult["orderBlocks"] = [];
+  const fvgs: StructureResult["fvgs"] = [];
+  
+  if (candles.length < 10) return { structures, orderBlocks, fvgs };
+  
+  for (let i = 2; i < candles.length; i++) {
+    const c1 = candles[i - 2];
+    const c2 = candles[i - 1];
+    const c3 = candles[i];
+    if (c3.low > c1.high) {
+      fvgs.push({ price: (c3.low + c1.high) / 2, type: "bullish", size: c3.low - c1.high });
+    } else if (c3.high < c1.low) {
+      fvgs.push({ price: (c3.high + c1.low) / 2, type: "bearish", size: c1.low - c3.high });
+    }
+  }
+  
+  for (let i = 4; i < candles.length - 1; i++) {
+    const c = candles[i];
+    const nextC = candles[i + 1];
+    const bodySize = Math.abs(c.close - c.open);
+    const nextBody = Math.abs(nextC.close - nextC.open);
+    const isImpulsiveUp = nextC.close > nextC.open && nextBody > bodySize * 1.5;
+    const isImpulsiveDown = nextC.close < nextC.open && nextBody > bodySize * 1.5;
+    if (isImpulsiveUp && c.close < c.open) {
+      orderBlocks.push({ price: c.close, type: "bullish", volume: c.volume || 0 });
+    } else if (isImpulsiveDown && c.close > c.open) {
+      orderBlocks.push({ price: c.close, type: "bearish", volume: c.volume || 0 });
+    }
+  }
+  
+  const swings: { idx: number; price: number; type: "high" | "low" }[] = [];
+  for (let i = 3; i < candles.length - 3; i++) {
+    const high = candles[i].high;
+    const low = candles[i].low;
+    const isSwingHigh = high > candles[i - 1].high && high > candles[i - 2].high &&
+                        high > candles[i + 1].high && high > candles[i + 2].high;
+    const isSwingLow = low < candles[i - 1].low && low < candles[i - 2].low &&
+                       low < candles[i + 1].low && low < candles[i + 2].low;
+    if (isSwingHigh) swings.push({ idx: i, price: high, type: "high" });
+    if (isSwingLow) swings.push({ idx: i, price: low, type: "low" });
+  }
+  
+  const currentPrice = candles[candles.length - 1].close;
+  const recentHighs = swings.filter(s => s.type === "high").slice(-3);
+  const recentLows = swings.filter(s => s.type === "low").slice(-3);
+  
+  if (recentHighs.length > 1) {
+    const lastHigh = recentHighs[recentHighs.length - 1];
+    const prevHigh = recentHighs[recentHighs.length - 2];
+    if (currentPrice > lastHigh.price) {
+      const type = lastHigh.price > prevHigh.price ? "BOS" : "CHoCH";
+      structures.push({ name: `${type} (Bullish)`, price: lastHigh.price, type: "bullish" });
+    }
+  }
+  
+  if (recentLows.length > 1) {
+    const lastLow = recentLows[recentLows.length - 1];
+    const prevLow = recentLows[recentLows.length - 2];
+    if (currentPrice < lastLow.price) {
+      const type = lastLow.price < prevLow.price ? "BOS" : "CHoCH";
+      structures.push({ name: `${type} (Bearish)`, price: lastLow.price, type: "bearish" });
+    }
+  }
+  
+  return { structures, orderBlocks, fvgs };
+}
+

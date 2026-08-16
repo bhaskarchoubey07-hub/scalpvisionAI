@@ -8,6 +8,10 @@ import { requireAuth } from "./middleware/auth.js";
 import { fetchMarketOverview, fetchMarketQuote, fetchYahooCandles } from "./services/marketData.js";
 import { createAuthToken, createUser, verifyUser } from "./services/auth.js";
 import { runBacktest } from "./services/backtesting.js";
+import { calculatePortfolioAnalytics } from "./services/portfolioAnalytics.js";
+import { fetchMarketNews } from "./services/newsService.js";
+import { fetchEconomicCalendar } from "./services/calendarService.js";
+import { computeIndicators } from "./services/technicalAnalysis.js";
 
 
 const upload = multer({
@@ -354,21 +358,35 @@ export function createRouter() {
     return response.status(201).json(rows[0]);
   }));
 
-  router.post("/pro/backtest/run", asyncHandler(async (request, response) => {
+  router.post("/pro/backtest/run", requireAuth, asyncHandler(async (request, response) => {
     const schema = z.object({
-      strategy: z.string(),
-      range: z.string(),
+      symbol: z.string().optional().default("RELIANCE.NS"),
+      strategy: z.string().optional(),
+      range: z.string().default("1y"),
       initial_capital: z.number().default(10000)
     });
-    const { strategy, range, initial_capital } = schema.parse(request.body);
-    
-    // Default to a sane ticker if we don't have one in context (usually backtests are on a specific symbol)
-    // For now, let's use RELIANCE.NS as default for the simulation
-    const symbol = "RELIANCE.NS"; 
-    
+    const { symbol, range, initial_capital } = schema.parse(request.body);
     const result = await runBacktest(symbol, range, initial_capital);
     return response.json(result);
+  }));
 
+  router.get("/pro/backtest/export", requireAuth, asyncHandler(async (request, response) => {
+    const schema = z.object({
+      symbol: z.string().optional().default("RELIANCE.NS"),
+      range: z.string().default("1y"),
+      initial_capital: z.coerce.number().default(10000)
+    });
+    const { symbol, range, initial_capital } = schema.parse(request.query);
+    const result = await runBacktest(symbol as string, range as string, initial_capital as number);
+    
+    let csv = "Symbol,Type,Entry Time,Exit Time,Entry Price,Exit Price,PnL,PnL %\n";
+    for (const t of result.trades) {
+      csv += `"${t.symbol}","${t.type}","${t.entryTime}","${t.exitTime}",${t.entryPrice},${t.exitPrice},${t.pnl},${t.pnlPercent}\n`;
+    }
+    
+    response.setHeader("Content-Type", "text/csv");
+    response.setHeader("Content-Disposition", `attachment; filename="backtest_${symbol}_${range}.csv"`);
+    return response.status(200).send(csv);
   }));
 
   router.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
@@ -458,6 +476,32 @@ export function createRouter() {
       [request.params.id, response.locals.user.sub]
     );
     return response.status(204).send();
+  }));
+
+  router.get("/portfolios/:id/analytics", requireAuth, asyncHandler(async (request, response) => {
+    const { rows: portfolio } = await pool.query(
+      "SELECT id FROM portfolios WHERE id = $1 AND user_id = $2",
+      [request.params.id, response.locals.user.sub]
+    );
+    if (portfolio.length === 0) {
+      return response.status(404).json({ error: "Portfolio not found or unauthorized" });
+    }
+
+    const { rows: holdings } = await pool.query(
+      "SELECT symbol, quantity as qty, avg_buy_price as avgprice, market FROM portfolio_holdings WHERE portfolio_id = $1",
+      [request.params.id]
+    );
+
+    const mappedHoldings = holdings.map((h) => ({
+      symbol: h.symbol,
+      qty: Number(h.qty),
+      avgPrice: Number(h.avgprice),
+      market: h.market,
+      sector: h.market === "crypto" ? "Cryptocurrency" : h.market === "forex" ? "Foreign Exchange" : "Technology"
+    }));
+
+    const analytics = await calculatePortfolioAnalytics(mappedHoldings);
+    return response.json(analytics);
   }));
 
   // --- EXPENSES ---
@@ -669,6 +713,81 @@ export function createRouter() {
       res.status(500).json({ error: "Failed to reach AI Advisor" });
     }
   });
+
+  // --- MARKET SCANNER ---
+  router.get("/market/scan", requireAuth, asyncHandler(async (request, response) => {
+    const schema = z.object({
+      market: z.enum(["stock", "crypto", "indian-stock", "forex"]).default("stock"),
+      filter: z.enum(["momentum", "breakout", "reversal", "probability", "scalp", "delivery"]).default("probability"),
+      timeframe: z.string().default("1d")
+    });
+    const { market, filter, timeframe } = schema.parse(request.query);
+    
+    const scanSymbols = {
+      stock: ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "NFLX", "AMD", "QCOM"],
+      crypto: ["BTC-USD", "ETH-USD", "SOL-USD", "ADA-USD", "XRP-USD", "DOT-USD", "DOGE-USD"],
+      "indian-stock": ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS", "BHARTIARTL.NS", "ITC.NS"],
+      forex: ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X"]
+    }[market];
+
+    const results = await Promise.all(scanSymbols.map(async (symbol) => {
+      try {
+        const candles = await fetchYahooCandles(symbol, "1y", timeframe === "1h" ? "60m" : "1d");
+        const analysis = computeIndicators(candles, symbol, timeframe);
+        if (!analysis) return null;
+        return {
+          symbol,
+          price: analysis.currentPrice,
+          direction: analysis.direction,
+          signal: analysis.direction === "long" ? "BUY" : analysis.direction === "short" ? "SELL" : "HOLD",
+          confidence: analysis.confidence,
+          netScore: analysis.netScore,
+          volatility: analysis.volatilityPercent,
+          trend: analysis.trend,
+          pattern: analysis.patterns[0]?.name || "Neutral Price Action",
+          breakout: analysis.indicators.find(i => i.name === "Bollinger Bands")?.value?.includes("Squeeze") || false,
+          rsi: analysis.indicators.find(i => i.name.startsWith("RSI"))?.numericValue ?? 50
+        };
+      } catch {
+        return null;
+      }
+    }));
+
+    const validResults = results.filter(Boolean) as any[];
+
+    let sorted = [...validResults];
+    if (filter === "momentum") {
+      sorted.sort((a, b) => Math.abs(b.netScore) - Math.abs(a.netScore));
+    } else if (filter === "probability") {
+      sorted.sort((a, b) => b.confidence - a.confidence);
+    } else if (filter === "breakout") {
+      sorted = sorted.filter(s => s.breakout || s.rsi > 60 || s.rsi < 40);
+      sorted.sort((a, b) => b.confidence - a.confidence);
+    } else if (filter === "reversal") {
+      sorted = sorted.filter(s => s.rsi > 70 || s.rsi < 30);
+      sorted.sort((a, b) => b.confidence - a.confidence);
+    } else if (filter === "scalp") {
+      sorted.sort((a, b) => (b.volatility * Math.abs(b.netScore)) - (a.volatility * Math.abs(a.netScore)));
+    } else if (filter === "delivery") {
+      sorted = sorted.filter(s => s.trend !== "sideways");
+      sorted.sort((a, b) => b.confidence - a.confidence);
+    }
+
+    return response.json(sorted.slice(0, 10));
+  }));
+
+  // --- NEWS INTELLIGENCE ---
+  router.get("/market/news", requireAuth, asyncHandler(async (request, response) => {
+    const symbol = request.query.symbol as string | undefined;
+    const news = await fetchMarketNews(symbol);
+    return response.json(news);
+  }));
+
+  // --- ECONOMIC CALENDAR ---
+  router.get("/market/calendar", requireAuth, asyncHandler(async (_request, response) => {
+    const calendar = await fetchEconomicCalendar();
+    return response.json(calendar);
+  }));
 
   return router;
 }

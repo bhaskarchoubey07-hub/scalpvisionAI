@@ -350,12 +350,82 @@ export type JournalEntry = {
 
 export type BacktestResult = {
   net_profit: number;
-  max_drawdown: string;
-  sharpe_ratio: string;
-  total_trades: number;
+  max_drawdown: number;
+  sharpe_ratio: number;
+  sortino_ratio: number;
+  cagr: number;
+  profit_factor: number;
+  expectancy: number;
   win_rate: number;
+  loss_rate: number;
+  total_trades: number;
   strategy_used: string;
   range_simulated: string;
+  equity_curve: { date: string; equity: number }[];
+  monthly_returns: Record<string, number>;
+  trades: {
+    symbol: string;
+    type: "BUY" | "SELL";
+    entryTime: string;
+    exitTime: string;
+    entryPrice: number;
+    exitPrice: number;
+    pnl: number;
+    pnlPercent: number;
+  }[];
+};
+
+export type PortfolioAnalytics = {
+  expectedReturn: number;
+  volatility: number;
+  sharpeRatio: number;
+  sortinoRatio: number;
+  treynorRatio: number;
+  beta: number;
+  alpha: number;
+  maxDrawdown: number;
+  diversificationScore: number;
+  riskScore: number;
+  sectorAllocation: { sector: string; weight: number }[];
+  correlationMatrix: { symbol1: string; symbol2: string; correlation: number }[];
+  suggestions: string[];
+};
+
+export type ScanResult = {
+  symbol: string;
+  price: number;
+  direction: string;
+  signal: string;
+  confidence: number;
+  netScore: number;
+  volatility: number;
+  trend: string;
+  pattern: string;
+  breakout: boolean;
+  rsi: number;
+};
+
+export type NewsItem = {
+  title: string;
+  link: string;
+  pubDate: string;
+  description: string;
+  sentiment: "positive" | "negative" | "neutral";
+  impactScore: number;
+  entities: string[];
+  summary: string;
+};
+
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  date: string;
+  importance: "high" | "medium" | "low";
+  category: "macro" | "earnings" | "dividend" | "ipo";
+  expected?: string;
+  actual?: string;
+  previous?: string;
+  currency?: string;
 };
 
 export async function fetchProSignals(): Promise<ProSignal[]> {
@@ -384,11 +454,14 @@ export async function addJournalEntry(token: string, entry: Partial<JournalEntry
   return response.json();
 }
 
-export async function runBacktest(strategy: string, range: string): Promise<BacktestResult> {
+export async function runBacktest(token: string, strategy: string, range: string, symbol = "RELIANCE.NS", initialCapital = 10000): Promise<BacktestResult> {
   const response = await fetch(`${apiBaseUrl}/pro/backtest/run`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ strategy, range })
+    headers: { 
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ symbol, strategy, range, initial_capital: initialCapital })
   });
   if (!response.ok) throw new Error("Backtesting failed");
   return response.json();
@@ -414,5 +487,45 @@ export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
     cache: "no-store"
   });
   if (!response.ok) throw new Error("Failed to load leaderboard");
+  return response.json();
+}
+
+export async function fetchPortfolioAnalytics(token: string, portfolioId: string): Promise<PortfolioAnalytics> {
+  const response = await fetch(`${apiBaseUrl}/portfolios/${portfolioId}/analytics`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error("Failed to load portfolio analytics");
+  return response.json();
+}
+
+export async function fetchMarketScan(token: string, market: string, filter: string, timeframe: string): Promise<ScanResult[]> {
+  const url = new URL(`${apiBaseUrl}/market/scan`);
+  url.searchParams.set("market", market);
+  url.searchParams.set("filter", filter);
+  url.searchParams.set("timeframe", timeframe);
+  
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error("Failed to load scanner results");
+  return response.json();
+}
+
+export async function fetchMarketNews(token: string, symbol?: string): Promise<NewsItem[]> {
+  const url = new URL(`${apiBaseUrl}/market/news`);
+  if (symbol) url.searchParams.set("symbol", symbol);
+  
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error("Failed to load news intelligence");
+  return response.json();
+}
+
+export async function fetchEconomicCalendar(token: string): Promise<CalendarEvent[]> {
+  const response = await fetch(`${apiBaseUrl}/market/calendar`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error("Failed to load economic calendar");
   return response.json();
 }

@@ -16,3 +16,14 @@ uploads/
 tmp/
 *.csv
 *.pkl
+
+# Portable environment and testing artifacts
+node-v22.13.0-win-x64/
+*.tsbuildinfo
+test-domain.js
+test-ipv6-options.js
+test-db.js
+test-output*.json
+*.txt
+tmp.sql
+

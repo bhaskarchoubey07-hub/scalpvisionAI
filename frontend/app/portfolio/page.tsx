@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { SectionHeader } from "@/components/section-header";
-import { fetchPortfolios, type Portfolio, createPortfolio, addPortfolioHolding, type MarketQuote, fetchMarketOverview } from "@/lib/api";
+import { fetchPortfolios, type Portfolio, createPortfolio, addPortfolioHolding, type MarketQuote, fetchMarketOverview, fetchPortfolioAnalytics, type PortfolioAnalytics } from "@/lib/api";
 import { Wallet, Plus, Loader2, IndianRupee, TrendingUp, TrendingDown, Trash2, PieChart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
@@ -190,6 +190,8 @@ export default function PortfolioPage() {
                         </tbody>
                       </table>
                    </div>
+                   
+                   <PortfolioAnalyticsPanel portfolioId={portfolio.id} />
                 </div>
               </motion.div>
             );
@@ -239,6 +241,145 @@ export default function PortfolioPage() {
           </div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function PortfolioAnalyticsPanel({ portfolioId }: { portfolioId: string }) {
+  const [analytics, setAnalytics] = useState<PortfolioAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        const data = await fetchPortfolioAnalytics(token, portfolioId);
+        setAnalytics(data);
+      } catch (err) {
+        setError("Unable to compute portfolio analytics");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAnalytics();
+  }, [portfolioId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-6 w-6 animate-spin text-accent" />
+        <span className="ml-3 text-xs font-bold uppercase tracking-widest text-slate-400">Computing risk diagnostics...</span>
+      </div>
+    );
+  }
+
+  if (error || !analytics) {
+    return (
+      <div className="p-6 text-center text-xs font-bold uppercase tracking-widest text-slate-500">
+        Add assets with historical data to unlock analytics.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8 pt-8 border-t border-white/5 space-y-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="glass p-5 rounded-2xl border border-white/5 bg-white/[0.01]">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Expected Return</div>
+          <div className="text-lg font-black text-white">{(analytics.expectedReturn * 100).toFixed(2)}%</div>
+        </div>
+        <div className="glass p-5 rounded-2xl border border-white/5 bg-white/[0.01]">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Annual Volatility</div>
+          <div className="text-lg font-black text-white">{(analytics.volatility * 100).toFixed(2)}%</div>
+        </div>
+        <div className="glass p-5 rounded-2xl border border-white/5 bg-white/[0.01]">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Sharpe Ratio</div>
+          <div className="text-lg font-black text-accent">{analytics.sharpeRatio.toFixed(2)}</div>
+        </div>
+        <div className="glass p-5 rounded-2xl border border-white/5 bg-white/[0.01]">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Sortino Ratio</div>
+          <div className="text-lg font-black text-accent">{analytics.sortinoRatio.toFixed(2)}</div>
+        </div>
+        <div className="glass p-5 rounded-2xl border border-white/5 bg-white/[0.01]">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Portfolio Beta</div>
+          <div className="text-lg font-black text-white">{analytics.beta.toFixed(2)}</div>
+        </div>
+        <div className="glass p-5 rounded-2xl border border-white/5 bg-white/[0.01]">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Max Drawdown</div>
+          <div className="text-lg font-black text-red-400">-{analytics.maxDrawdown.toFixed(1)}%</div>
+        </div>
+        <div className="glass p-5 rounded-2xl border border-white/5 bg-white/[0.01]">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Diversification Benefit</div>
+          <div className="text-lg font-black text-white">{(analytics.diversificationScore * 100).toFixed(0)}%</div>
+        </div>
+        <div className="glass p-5 rounded-2xl border border-white/5 bg-white/[0.01]">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Volatility Score</div>
+          <div className="text-lg font-black text-white">{analytics.riskScore}/100</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sector Weights</h4>
+          <div className="space-y-3">
+            {analytics.sectorAllocation.map(s => (
+              <div key={s.sector} className="space-y-1">
+                <div className="flex justify-between text-xs font-semibold">
+                  <span className="text-slate-300 font-bold uppercase">{s.sector}</span>
+                  <span className="text-white">{(s.weight * 100).toFixed(1)}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-accent" style={{ width: `${s.weight * 100}%` }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Actionable Portfolio Diagnostics</h4>
+          <div className="space-y-3">
+            {analytics.suggestions.map((s, idx) => (
+              <div key={idx} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-slate-300 leading-relaxed font-bold">
+                {s}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {analytics.correlationMatrix.length > 0 && (
+        <div className="space-y-4">
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Holdings Correlation Heatmap</h4>
+          <div className="overflow-x-auto rounded-2xl border border-white/5">
+            <div className="min-w-[400px] p-4 bg-white/[0.01] grid grid-cols-4 gap-2 text-center text-xs">
+              <div className="font-bold text-slate-500 uppercase">Asset Matrix</div>
+              {Array.from(new Set(analytics.correlationMatrix.map(m => m.symbol1))).map(s => (
+                <div key={s} className="font-black text-white uppercase tracking-wider">{s.replace(".NS", "")}</div>
+              ))}
+              {Array.from(new Set(analytics.correlationMatrix.map(m => m.symbol1))).map(s1 => (
+                <React.Fragment key={s1}>
+                  <div className="font-black text-white uppercase text-left py-2 tracking-wider">{s1.replace(".NS", "")}</div>
+                  {Array.from(new Set(analytics.correlationMatrix.map(m => m.symbol1))).map(s2 => {
+                    const cell = analytics.correlationMatrix.find(
+                      m => (m.symbol1 === s1 && m.symbol2 === s2) || (m.symbol1 === s2 && m.symbol2 === s1)
+                    );
+                    const corr = cell ? cell.correlation : 1;
+                    const bg = corr > 0.7 ? "bg-red-500/10 text-red-400 border border-red-500/20" : corr < 0.3 ? "bg-accent/10 text-accent border border-accent/20" : "bg-white/5 text-slate-400";
+                    return (
+                      <div key={s2} className={`py-2 rounded-lg font-mono font-bold ${bg}`}>
+                        {corr.toFixed(2)}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
